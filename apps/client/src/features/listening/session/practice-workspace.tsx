@@ -10,9 +10,9 @@ import {
   validateSubtitleFile,
   type LineProgress,
   type SubtitleCue,
-  type SubtitleFormat,
   type TextComparison,
   type TimeRange,
+  type TranscriptSummary,
 } from '@ldg/shared';
 import { BookOpenText, CircleCheck, PencilLine, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -26,14 +26,22 @@ import type { Playback } from '../playback/playback';
 import { useBoundedPlayback, type BoundedPlaybackApi } from '../playback/use-bounded-playback';
 import { useListeningShortcuts } from '../playback/use-listening-shortcuts';
 import { PracticeBar } from '../practice-bar';
+import type { TranscriptContent } from '../storage/listening-repository';
 import { TranscriptPanel } from '../transcript-panel';
+import { describeTranscriptSource } from '../transcription/transcribed-session';
 import type { ListeningSessionApi, LoadedSession } from './use-listening-session';
 
 type Mode = 'read' | 'dictation';
 
-interface PendingTranscriptChange {
-  readonly cues: readonly SubtitleCue[] | null;
-  readonly summary: { fileName: string; format: SubtitleFormat; cueCount: number; skippedBlocks: number } | null;
+export interface TranscriptChange {
+  readonly content: TranscriptContent | null;
+  readonly summary: TranscriptSummary | null;
+}
+
+/** Lets sidebar cards (e.g. automatic transcription) reuse the workspace's replace-with-confirmation flow. */
+export interface WorkspaceTools {
+  readonly hasTranscript: boolean;
+  replaceTranscript(change: TranscriptChange): void;
 }
 
 const SAVE_INTERVAL_MS = 5000;
@@ -54,7 +62,7 @@ function ModeSwitch({ mode, dictationAvailable, onChange }: { mode: Mode; dictat
             type="button"
             aria-pressed={selected}
             disabled={disabled}
-            title={disabled ? 'Import a transcript to practise dictation' : undefined}
+            title={disabled ? 'Add a transcript to practise dictation' : undefined}
             onClick={() => onChange(value)}
             className={cn(
               'inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition-colors duration-150 disabled:opacity-50',
@@ -127,7 +135,7 @@ export function PracticeWorkspace({
   playback: Playback;
   /** Rendered as a function so the player can show the active loop. */
   player: (loop: TimeRange | null) => ReactNode;
-  sidebar?: ReactNode;
+  sidebar?: ReactNode | ((tools: WorkspaceTools) => ReactNode);
   /** Seek to the saved position once ready (YouTube handles this at creation instead). */
   restorePosition: boolean;
 }) {
@@ -137,7 +145,7 @@ export function PracticeWorkspace({
   const [searchParams, setSearchParams] = useSearchParams();
   const [autoPlayLine, setAutoPlayLine] = useState(false);
   const [transcriptError, setTranscriptError] = useState<string | null>(null);
-  const [pendingChange, setPendingChange] = useState<PendingTranscriptChange | null>(null);
+  const [pendingChange, setPendingChange] = useState<TranscriptChange | null>(null);
 
   const hasCues = cues !== null && cues.length > 0;
   const mode: Mode = searchParams.get('mode') === 'dictation' && hasCues ? 'dictation' : 'read';
@@ -261,16 +269,16 @@ export function PracticeWorkspace({
     void updateSession((stored) => ({ ...stored, durationSeconds: duration }));
   }, [state.duration, session.durationSeconds, updateSession]);
 
-  // --- Transcript import and removal (dictation history depends on cue identities).
-  function applyTranscriptChange(change: PendingTranscriptChange) {
+  // --- Transcript import, generation and removal (dictation history depends on cue identities).
+  function applyTranscriptChange(change: TranscriptChange) {
     setPendingChange(null);
     setTranscriptError(null);
     practice.clear();
-    void api.replaceTranscript(session, change.summary, change.cues);
-    setParams(change.cues ? { line: 0 } : { mode: 'read', line: 0 });
+    void api.replaceTranscript(session, change.summary, change.content);
+    setParams(change.content ? { line: 0 } : { mode: 'read', line: 0 });
   }
 
-  function requestTranscriptChange(change: PendingTranscriptChange) {
+  function requestTranscriptChange(change: TranscriptChange) {
     if (dictation.length > 0) setPendingChange(change);
     else applyTranscriptChange(change);
   }
@@ -288,7 +296,7 @@ export function PracticeWorkspace({
         return;
       }
       requestTranscriptChange({
-        cues: result.cues,
+        content: { cues: result.cues },
         summary: { fileName: file.name, format: result.format, cueCount: result.cues.length, skippedBlocks: result.skippedBlocks },
       });
     } catch {
@@ -339,6 +347,7 @@ export function PracticeWorkspace({
   );
   const loop = practice.bounded?.mode === 'loop' ? practice.bounded.range : null;
   const selectedCue = hasCues ? cues[selectedIndex] : undefined;
+  const tools: WorkspaceTools = { hasTranscript: hasCues, replaceTranscript: requestTranscriptChange };
 
   return (
     <div role="group" aria-label="Listening session" tabIndex={-1} onKeyDown={onKeyDown} className="flex flex-col gap-6 outline-none">
@@ -401,28 +410,28 @@ export function PracticeWorkspace({
             <TranscriptPanel
               transcript={
                 cues && session.transcript
-                  ? { fileName: session.transcript.fileName, cues, skippedBlocks: session.transcript.skippedBlocks }
+                  ? { fileName: describeTranscriptSource(session.transcript), cues, skippedBlocks: session.transcript.skippedBlocks }
                   : null
               }
               activeIndex={activeIndex}
               error={transcriptError}
               onImport={(file) => void importSubtitles(file)}
-              onClear={() => requestTranscriptChange({ cues: null, summary: null })}
+              onClear={() => requestTranscriptChange({ content: null, summary: null })}
               onSeek={(seconds) => {
                 practice.clear();
                 controls.seek(seconds);
               }}
             />
           )}
-          {sidebar}
+          {typeof sidebar === 'function' ? sidebar(tools) : sidebar}
         </div>
       </div>
 
       <ConfirmDialog
         open={pendingChange !== null}
-        title={pendingChange?.cues ? 'Replace the transcript?' : 'Remove the transcript?'}
+        title={pendingChange?.content ? 'Replace the transcript?' : 'Remove the transcript?'}
         description={`Dictation history for this session (${summary.practisedLines} ${summary.practisedLines === 1 ? 'line' : 'lines'}) will be cleared, because it belongs to the current transcript lines.`}
-        confirmLabel={pendingChange?.cues ? 'Replace' : 'Remove'}
+        confirmLabel={pendingChange?.content ? 'Replace' : 'Remove'}
         destructive
         onConfirm={() => pendingChange && applyTranscriptChange(pendingChange)}
         onCancel={() => setPendingChange(null)}

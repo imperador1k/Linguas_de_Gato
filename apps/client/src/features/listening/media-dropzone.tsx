@@ -1,10 +1,11 @@
 import {
-  MEDIA_ACCEPT_ATTRIBUTE,
   MAX_LOCAL_MEDIA_BYTES,
-  SUPPORTED_MEDIA_LABEL,
   formatBytes,
+  mediaAcceptAttribute,
+  mediaFormatLabel,
   validateMediaFile,
   type AcceptedMediaFile,
+  type MediaPurpose,
 } from '@ldg/shared';
 import { Upload } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type DragEvent } from 'react';
@@ -19,9 +20,17 @@ function hasFiles(event: { dataTransfer: DataTransfer | null }): boolean {
 export function MediaDropzone({
   onAccept,
   prompt = 'Drag an audio or video file here',
+  purpose = 'playback',
+  maxBytes = MAX_LOCAL_MEDIA_BYTES,
+  note = 'stays on this device',
 }: {
   onAccept: (file: File, accepted: AcceptedMediaFile) => void;
   prompt?: string;
+  /** Which formats are accepted: playable in the browser, or transcribable by the provider. */
+  purpose?: MediaPurpose;
+  maxBytes?: number;
+  /** Short privacy note shown in the hint line. */
+  note?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
@@ -52,7 +61,7 @@ export function MediaDropzone({
     const file = files[0];
     if (!file) return;
 
-    const result = validateMediaFile(file);
+    const result = validateMediaFile(file, { purpose, maxBytes });
     if (!result.ok) {
       setError(result.error.message);
       return;
@@ -103,7 +112,7 @@ export function MediaDropzone({
         </span>
         <p className="font-medium">{dragging ? 'Drop to open' : prompt}</p>
         <p id={hintId} className="mt-1.5 text-sm text-muted-foreground">
-          {SUPPORTED_MEDIA_LABEL} · up to {formatBytes(MAX_LOCAL_MEDIA_BYTES)} · stays on this device
+          {mediaFormatLabel(purpose)} · up to {formatBytes(maxBytes)} · {note}
         </p>
         <Button
           variant="secondary"
@@ -116,7 +125,7 @@ export function MediaDropzone({
         <input
           ref={inputRef}
           type="file"
-          accept={MEDIA_ACCEPT_ATTRIBUTE}
+          accept={mediaAcceptAttribute(purpose)}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"

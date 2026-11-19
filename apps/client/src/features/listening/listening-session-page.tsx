@@ -1,7 +1,7 @@
 import { formatBytes, type ListeningSession } from '@ldg/shared';
-import { ArrowLeft, PencilLine, Trash } from 'lucide-react';
-import { useId, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { ArrowLeft, BookOpenText, CircleCheck, PencilLine, Trash, X } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { ConfirmDialog, Dialog } from '@/components/ui/dialog';
@@ -11,6 +11,7 @@ import { Notice } from '@/components/ui/notice';
 import { cn } from '@/lib/utils';
 import { LocalSessionView, YouTubeSessionView } from './session/session-views';
 import { useListeningSession } from './session/use-listening-session';
+import { describeTranscriptSource } from './transcription/transcribed-session';
 
 function BackLink() {
   return (
@@ -26,6 +27,47 @@ function describeSource(session: ListeningSession): string {
   const lines = session.transcript ? `${session.transcript.cueCount} transcript lines` : 'No transcript yet';
   if (source.kind === 'youtube') return `YouTube video · ${lines}`;
   return `${source.mediaKind === 'video' ? 'Video' : 'Audio'} file · ${formatBytes(source.fileSize)} · ${lines}`;
+}
+
+/** Confirms a fresh automatic transcript and offers the next step. */
+function TranscribedBanner({ session, onStartDictation, onDismiss }: { session: ListeningSession; onStartDictation: () => void; onDismiss: () => void }) {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Move focus here after the navigation, so keyboard and screen-reader users hear the outcome.
+  useEffect(() => headingRef.current?.focus(), []);
+  if (!session.transcript) return null;
+  const lines = session.transcript.cueCount;
+
+  return (
+    <section
+      aria-labelledby="transcribed-heading"
+      className="mb-6 flex flex-col gap-4 rounded-lg border border-success/40 bg-success-subtle px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <div className="flex min-w-0 gap-3">
+        <CircleCheck aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-success" />
+        <div className="min-w-0">
+          <h2 id="transcribed-heading" ref={headingRef} tabIndex={-1} className="font-medium outline-none">
+            Transcript ready: {lines} {lines === 1 ? 'line' : 'lines'}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {describeTranscriptSource(session.transcript)}. Check it while you listen; automatic transcripts can contain mistakes.
+          </p>
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <Button onClick={onStartDictation}>
+          <PencilLine aria-hidden="true" />
+          Start dictation
+        </Button>
+        <Button variant="secondary" onClick={onDismiss}>
+          <BookOpenText aria-hidden="true" />
+          Read along
+        </Button>
+        <Button variant="ghost" size="icon-sm" aria-label="Dismiss" onClick={onDismiss}>
+          <X aria-hidden="true" />
+        </Button>
+      </div>
+    </section>
+  );
 }
 
 function RenameDialog({
@@ -71,6 +113,7 @@ function RenameDialog({
 export function ListeningSessionPage() {
   const { sessionId = '' } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const api = useListeningSession(sessionId);
   const [renaming, setRenaming] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -103,6 +146,22 @@ export function ListeningSessionPage() {
   }
 
   const { session } = state.data;
+  const justTranscribed = searchParams.get('transcribed') === '1' && session.transcript?.format === 'whisper';
+
+  function leaveBanner(mode: 'read' | 'dictation') {
+    setSearchParams(
+      (current) => {
+        const params = new URLSearchParams(current);
+        params.delete('transcribed');
+        if (mode === 'dictation') {
+          params.set('mode', 'dictation');
+          params.set('line', '1');
+        }
+        return params;
+      },
+      { replace: true },
+    );
+  }
 
   return (
     <>
@@ -127,6 +186,10 @@ export function ListeningSessionPage() {
         <Notice className="mb-6">
           {api.fallbackReason.message} This session lasts until you close the tab.
         </Notice>
+      ) : null}
+
+      {justTranscribed ? (
+        <TranscribedBanner session={session} onStartDictation={() => leaveBanner('dictation')} onDismiss={() => leaveBanner('read')} />
       ) : null}
 
       {session.source.kind === 'file' ? (

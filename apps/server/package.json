@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@fastify/helmet": "^13.2.0",
+    "@fastify/multipart": "^10.1.9",
     "@fastify/static": "^10.1.11",
     "@ldg/shared": "*",
     "fastify": "^5.12.8",

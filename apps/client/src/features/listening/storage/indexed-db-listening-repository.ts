@@ -4,12 +4,17 @@ import {
   transcriptRecordSchema,
   type DictationRecord,
   type ListeningSession,
-  type SubtitleCue,
   type TranscriptRecord,
 } from '@ldg/shared';
 import type { z } from 'zod';
 import { openDatabase, requestToPromise, StorageError, transactionDone } from '@/lib/storage/indexed-db';
-import { sortByLastOpened, withMediaStored, type ListeningRepository } from './listening-repository';
+import {
+  sortByLastOpened,
+  toTranscriptRecord,
+  withMediaStored,
+  type ListeningRepository,
+  type TranscriptContent,
+} from './listening-repository';
 
 export const LISTENING_DB_NAME = 'linguas-de-gato';
 export const LISTENING_DB_VERSION = 1;
@@ -17,11 +22,12 @@ export const LISTENING_DB_VERSION = 1;
 /**
  * Stores (schema v1):
  * - sessions     keyPath id                    small metadata, listed often
- * - transcripts  keyPath sessionId             cue arrays, loaded per session
+ * - transcripts  keyPath sessionId             cues (+ provider segments/words since M2), loaded per session
  * - media        keyPath sessionId             optional opt-in copy of a local file
  * - dictation    keyPath [sessionId, cueId]    attempts per transcript line
  *
- * Large payloads live outside `sessions` so listing stays cheap.
+ * Large payloads live outside `sessions` so listing stays cheap. M2 only
+ * added optional fields to records, so the schema version is unchanged.
  */
 const STORES = { sessions: 'sessions', transcripts: 'transcripts', media: 'media', dictation: 'dictation' } as const;
 const ALL_STORES = Object.values(STORES);
@@ -116,9 +122,13 @@ export class IndexedDbListeningRepository implements ListeningRepository {
     return parseOrNull(listeningSessionSchema, row, 'session');
   }
 
-  async createSession(session: ListeningSession): Promise<void> {
-    const transaction = this.transaction(STORES.sessions, 'readwrite');
-    transaction.objectStore(STORES.sessions).add(listeningSessionSchema.parse(session));
+  async createSession(session: ListeningSession, transcript?: TranscriptContent): Promise<void> {
+    // Validate everything before opening the transaction, so a bad value never half-writes.
+    const sessionRow = listeningSessionSchema.parse(session);
+    const transcriptRow = transcript ? transcriptRecordSchema.parse(toTranscriptRecord(session.id, transcript)) : null;
+    const transaction = this.transaction([STORES.sessions, STORES.transcripts], 'readwrite');
+    transaction.objectStore(STORES.sessions).add(sessionRow);
+    if (transcriptRow) transaction.objectStore(STORES.transcripts).put(transcriptRow);
     await transactionDone(transaction);
   }
 
@@ -153,12 +163,14 @@ export class IndexedDbListeningRepository implements ListeningRepository {
     return parseOrNull(transcriptRecordSchema, row, 'transcript');
   }
 
-  async replaceTranscript(session: ListeningSession, cues: readonly SubtitleCue[] | null): Promise<void> {
+  async replaceTranscript(session: ListeningSession, transcript: TranscriptContent | null): Promise<void> {
+    const sessionRow = listeningSessionSchema.parse(session);
+    const transcriptRow = transcript ? transcriptRecordSchema.parse(toTranscriptRecord(session.id, transcript)) : null;
     const transaction = this.transaction([STORES.sessions, STORES.transcripts, STORES.dictation], 'readwrite');
-    transaction.objectStore(STORES.sessions).put(listeningSessionSchema.parse(session));
+    transaction.objectStore(STORES.sessions).put(sessionRow);
     const transcripts = transaction.objectStore(STORES.transcripts);
-    if (cues) {
-      transcripts.put(transcriptRecordSchema.parse({ sessionId: session.id, cues }));
+    if (transcriptRow) {
+      transcripts.put(transcriptRow);
     } else {
       transcripts.delete(session.id);
     }

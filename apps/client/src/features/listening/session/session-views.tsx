@@ -2,6 +2,7 @@ import { MEDIA_FORMATS, formatBytes, type FileSource, type YouTubeSource } from 
 import { useEffect, useMemo, useState } from 'react';
 import { MediaPlayer } from '../media-player';
 import { TranscriptionCard } from '../transcription-card';
+import { SessionTranscriptionCard } from '../transcription/session-transcription-card';
 import { useMediaPlayer } from '../use-media-player';
 import { useYouTubePlayer } from '../youtube/use-youtube-player';
 import { YouTubeSessionPlayer } from '../youtube/youtube-session-player';
@@ -61,17 +62,17 @@ export function LocalSessionView({
           <MediaReconnect source={source} onAttach={api.attachMedia} />
         )
       }
-      sidebar={
+      sidebar={(tools) => (
         <>
+          <SessionTranscriptionCard source={source} media={data.media} tools={tools} />
           <MediaCopyCard
             source={source}
             media={data.media}
             persistent={api.persistent}
             onChange={(enabled) => api.setMediaCopy(enabled, data.media)}
           />
-          <TranscriptionCard sourceKind="file" />
         </>
-      }
+      )}
     />
   );
 }

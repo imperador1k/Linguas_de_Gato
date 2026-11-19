@@ -1,37 +1,58 @@
-import type { AiProviderId, LanguageCode, Transcript } from '@ldg/shared';
+import type { AiProviderId, TranscriptionModel, TranscriptionResult } from '@ldg/shared';
 import type { AppConfig } from '../../config/env.js';
+import { GroqTranscriptionProvider } from './groq-transcription.js';
 
 /**
  * Provider abstraction for AI features. Routes depend on these interfaces,
- * never on a vendor SDK, so Groq can be replaced or complemented later.
+ * never on a vendor API, so Groq can be replaced or complemented later.
  */
 
 export interface TranscriptionRequest {
-  readonly audio: Buffer;
+  /** Server-side temporary file; the caller owns and deletes it. */
+  readonly filePath: string;
+  /** Name sent to the provider (its extension tells the provider the format). */
   readonly fileName: string;
   readonly mimeType: string;
-  readonly language: LanguageCode;
+  readonly model: TranscriptionModel;
+  /** ISO-639-1 code, or null to let the model detect the language. */
+  readonly language: 'en' | null;
 }
 
 export interface TranscriptionProvider {
   readonly id: AiProviderId;
   readonly maxUploadBytes: number;
-  transcribe(request: TranscriptionRequest, signal?: AbortSignal): Promise<Transcript>;
+  /**
+   * Rejects with `AppError` for provider failures. If `signal` aborts for a
+   * reason other than a timeout, rejects with that reason unchanged.
+   */
+  transcribe(request: TranscriptionRequest, signal: AbortSignal): Promise<TranscriptionResult>;
 }
 
 export interface AiProviders {
   /** Which vendor has credentials configured, regardless of feature support. */
   readonly configuredProvider: AiProviderId | null;
-  /** Null until an implementation exists and is configured (milestone M2). */
+  /** Null when no provider is configured. */
   readonly transcription: TranscriptionProvider | null;
 }
 
-/** Groq's documented upload limit for speech-to-text on the free tier. Re-verify in M2. */
-export const DEFAULT_TRANSCRIPTION_UPLOAD_BYTES = 25 * 1024 ** 2;
+export interface AiProviderDependencies {
+  /** Injected in tests; defaults to the global fetch. */
+  readonly fetch?: typeof fetch;
+}
 
-export function createAiProviders(config: Pick<AppConfig, 'groqApiKey'>): AiProviders {
+export function createAiProviders(
+  config: Pick<AppConfig, 'groqApiKey' | 'groqBaseUrl' | 'transcription'>,
+  dependencies: AiProviderDependencies = {},
+): AiProviders {
+  if (!config.groqApiKey) return { configuredProvider: null, transcription: null };
+
   return {
-    configuredProvider: config.groqApiKey ? 'groq' : null,
-    transcription: null,
+    configuredProvider: 'groq',
+    transcription: new GroqTranscriptionProvider({
+      apiKey: config.groqApiKey,
+      baseUrl: config.groqBaseUrl,
+      maxUploadBytes: config.transcription.maxUploadBytes,
+      fetch: dependencies.fetch ?? globalThis.fetch,
+    }),
   };
 }

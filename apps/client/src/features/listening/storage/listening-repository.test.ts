@@ -9,7 +9,7 @@ import { newFileSession, newYouTubeSession } from './listening-storage';
 import { MemoryListeningRepository } from './memory-listening-repository';
 
 const accepted = {
-  format: { extension: 'mp3', label: 'MP3', kind: 'audio', mimeTypes: ['audio/mpeg'] },
+  format: { extension: 'mp3', label: 'MP3', kind: 'audio', mimeTypes: ['audio/mpeg'], playable: true, transcribable: true },
   kind: 'audio',
 } as const;
 
@@ -22,6 +22,8 @@ const cues: SubtitleCue[] = [
   { id: '1', startMs: 0, endMs: 1000, text: 'Hello there.' },
   { id: '2', startMs: 1000, endMs: 2500, text: 'How are you?' },
 ];
+
+const srtSummary = { fileName: 'episode.srt', format: 'srt' as const, cueCount: 2, skippedBlocks: 0 };
 
 function dictation(sessionId: string, cueId: string): DictationRecord {
   return {
@@ -64,6 +66,17 @@ describe.each(factories)('$name contract', ({ create, dispose }) => {
     expect(await repo.getSession('missing')).toBeNull();
   });
 
+  it('creates a session together with its transcript and provider timings', async () => {
+    const session = { ...fileSession(), transcript: srtSummary };
+    const words = [{ text: 'Hello', startMs: 0, endMs: 400 }];
+    const segments = [{ id: '1', startMs: 0, endMs: 2500, text: 'Hello there. How are you?', avgLogprob: null, noSpeechProb: null }];
+
+    await repo.createSession(session, { cues, words, segments });
+
+    expect((await repo.getSession(session.id))?.transcript?.cueCount).toBe(2);
+    expect(await repo.getTranscript(session.id)).toEqual({ sessionId: session.id, cues, words, segments });
+  });
+
   it('updates a session atomically and returns the stored value', async () => {
     const session = fileSession();
     await repo.createSession(session);
@@ -92,12 +105,9 @@ describe.each(factories)('$name contract', ({ create, dispose }) => {
   it('stores and replaces transcripts, clearing stale dictation history', async () => {
     const session = fileSession();
     await repo.createSession(session);
-    const withTranscript = {
-      ...session,
-      transcript: { fileName: 'episode.srt', format: 'srt' as const, cueCount: 2, skippedBlocks: 0 },
-    };
+    const withTranscript = { ...session, transcript: srtSummary };
 
-    await repo.replaceTranscript(withTranscript, cues);
+    await repo.replaceTranscript(withTranscript, { cues });
     await repo.putDictation(dictation(session.id, '1'));
     expect((await repo.getTranscript(session.id))?.cues).toEqual(cues);
     expect(await repo.listDictation(session.id)).toHaveLength(1);
@@ -145,7 +155,7 @@ describe.each(factories)('$name contract', ({ create, dispose }) => {
     const drop = fileSession('drop.mp3');
     await repo.createSession(keep);
     await repo.createSession(drop);
-    await repo.replaceTranscript({ ...drop, transcript: { fileName: 'x.srt', format: 'srt', cueCount: 2, skippedBlocks: 0 } }, cues);
+    await repo.replaceTranscript({ ...drop, transcript: { ...srtSummary, fileName: 'x.srt' } }, { cues });
     await repo.saveMedia(drop.id, new Blob(['x']));
     await repo.putDictation(dictation(drop.id, '1'));
     await repo.putDictation(dictation(keep.id, '1'));
@@ -167,7 +177,7 @@ describe('IndexedDbListeningRepository persistence', () => {
     const first = await IndexedDbListeningRepository.open(factory);
     const session = fileSession();
     await first.createSession(session);
-    await first.replaceTranscript({ ...session, transcript: { fileName: 'a.vtt', format: 'vtt', cueCount: 2, skippedBlocks: 0 } }, cues);
+    await first.replaceTranscript({ ...session, transcript: { ...srtSummary, fileName: 'a.vtt', format: 'vtt' } }, { cues });
     await first.putDictation(dictation(session.id, '2'));
     first.close();
 
@@ -176,6 +186,25 @@ describe('IndexedDbListeningRepository persistence', () => {
     expect((await second.getTranscript(session.id))?.cues).toEqual(cues);
     expect((await second.listDictation(session.id))[0]?.cueId).toBe('2');
     second.close();
+  });
+
+  it('reads M1 records (no M2 fields) unchanged', async () => {
+    const factory = new IDBFactory();
+    const repo = await IndexedDbListeningRepository.open(factory);
+    const session = { ...fileSession(), transcript: srtSummary };
+    await repo.createSession(session, { cues });
+    expect(await repo.getTranscript(session.id)).toEqual({ sessionId: session.id, cues });
+    expect((await repo.getSession(session.id))?.transcript).toEqual(srtSummary);
+    repo.close();
+  });
+
+  it('writes nothing when the transcript of a new session is invalid', async () => {
+    const repo = await IndexedDbListeningRepository.open(new IDBFactory());
+    const session = fileSession();
+    const badCues = [{ id: '', startMs: -1, endMs: 0, text: 'x' }] as unknown as SubtitleCue[];
+    await expect(repo.createSession(session, { cues: badCues })).rejects.toThrow();
+    expect(await repo.getSession(session.id)).toBeNull();
+    repo.close();
   });
 
   it('skips corrupt records instead of failing the whole list', async () => {

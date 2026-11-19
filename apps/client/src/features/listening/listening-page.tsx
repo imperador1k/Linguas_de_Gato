@@ -1,10 +1,11 @@
 import type { AcceptedMediaFile, ListeningSession, YouTubeVideoRef } from '@ldg/shared';
-import { FileMusic, SquarePlay } from 'lucide-react';
+import { FileMusic, Sparkles, SquarePlay } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
+import { useCapabilities } from '@/hooks/use-capabilities';
 import { MediaDropzone } from './media-dropzone';
 import { RecentSessions } from './session/recent-sessions';
 import { SourceTabs } from './source-tabs';
@@ -15,25 +16,33 @@ import {
   useListeningStorage,
 } from './storage/listening-storage';
 import { rememberSessionMedia } from './storage/session-media-cache';
-import { TranscriptionCard } from './transcription-card';
+import { TranscribeNewSession } from './transcription/transcribe-new-session';
 import { YouTubeSourceForm } from './youtube-source';
 
-type SourceTabValue = 'file' | 'youtube';
+type SourceTabValue = 'transcribe' | 'file' | 'youtube';
 
 function RightsNote() {
   return (
     <p className="text-xs leading-relaxed text-muted-foreground">
       Only import media you own or are authorised to use. YouTube videos are played through YouTube's official player and
-      are never downloaded.
+      are never downloaded or transcribed.
     </p>
   );
 }
 
 export function ListeningPage() {
-  const [tab, setTab] = useState<SourceTabValue>('file');
+  const capabilities = useCapabilities();
+  const [chosenTab, setChosenTab] = useState<SourceTabValue | null>(null);
   const [error, setError] = useState<string | null>(null);
   const storage = useListeningStorage();
   const navigate = useNavigate();
+
+  // Until the learner picks a tab, lead with transcription. While capabilities load, that tab only shows
+  // "Checking…" (nothing to interact with), so falling back to File when it's unavailable never moves a
+  // drop target from under the learner.
+  const transcriptionUnavailable =
+    capabilities.status === 'error' || (capabilities.status === 'ready' && !capabilities.data.transcription.available);
+  const tab: SourceTabValue = chosenTab ?? (transcriptionUnavailable ? 'file' : 'transcribe');
 
   async function start(session: ListeningSession, media?: File) {
     if (!storage) return;
@@ -52,7 +61,7 @@ export function ListeningPage() {
       <PageHeader
         eyebrow="Listening"
         title="Listen closely, line by line."
-        description="Bring in a recording you own or a YouTube lesson. Add its transcript to follow along, loop hard passages, and test yourself with dictation."
+        description="Bring in a recording you own or a YouTube lesson. Transcribe it or add its subtitles, loop hard passages, and test yourself with dictation."
       />
 
       {storage?.fallbackReason ? (
@@ -74,16 +83,28 @@ export function ListeningPage() {
             <SourceTabs
               label="Media source"
               value={tab}
-              onChange={setTab}
+              onChange={setChosenTab}
               tabs={[
                 {
+                  value: 'transcribe',
+                  label: 'Transcribe',
+                  icon: Sparkles,
+                  content: <TranscribeNewSession storage={storage} />,
+                },
+                {
                   value: 'file',
-                  label: 'Audio or video file',
+                  label: 'File',
                   icon: FileMusic,
                   content: (
-                    <MediaDropzone
-                      onAccept={(file: File, accepted: AcceptedMediaFile) => void start(newFileSession(file, accepted), file)}
-                    />
+                    <div className="flex flex-col gap-3">
+                      <MediaDropzone
+                        onAccept={(file: File, accepted: AcceptedMediaFile) => void start(newFileSession(file, accepted), file)}
+                      />
+                      <p className="text-xs leading-relaxed text-muted-foreground">
+                        Opens the recording without transcribing it. Add SRT or WebVTT subtitles in the session, or transcribe it
+                        there later.
+                      </p>
+                    </div>
                   ),
                 },
                 {
@@ -135,7 +156,6 @@ export function ListeningPage() {
               </ol>
             </CardContent>
           </Card>
-          <TranscriptionCard sourceKind={tab} />
         </div>
       </div>
     </>

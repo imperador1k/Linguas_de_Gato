@@ -1,4 +1,10 @@
-import { apiErrorResponseSchema, capabilitiesResponseSchema, healthResponseSchema } from '@ldg/shared';
+import {
+  CLIENT_HEADER,
+  CLIENT_HEADER_VALUE,
+  apiErrorResponseSchema,
+  capabilitiesResponseSchema,
+  healthResponseSchema,
+} from '@ldg/shared';
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
@@ -14,7 +20,12 @@ const baseConfig: AppConfig = {
   version: '0.0.0-test',
   clientDistDir: null,
   groqApiKey: null,
+  groqBaseUrl: 'https://api.groq.com/openai/v1',
+  transcription: { maxUploadBytes: 25 * 1024 ** 2, timeoutMs: 300_000 },
 };
+
+/** The web client's header; state-changing API calls are rejected without it (request guards). */
+const CLIENT = { [CLIENT_HEADER]: CLIENT_HEADER_VALUE };
 
 let app: FastifyInstance | undefined;
 
@@ -68,13 +79,15 @@ describe('GET /api/capabilities', () => {
     expect(body.feedback).toMatchObject({ available: false, configured: false });
   });
 
-  it('reports a configured key without claiming the feature is available', async () => {
+  it('reports transcription as available with a key, with the configured limit and no secret', async () => {
     const secret = 'gsk_test_secret_value';
-    const server = await build({ groqApiKey: secret });
+    const server = await build({ groqApiKey: secret, transcription: { maxUploadBytes: 10 * 1024 ** 2, timeoutMs: 60_000 } });
     const response = await server.inject({ method: 'GET', url: '/api/capabilities' });
 
     const body = capabilitiesResponseSchema.parse(response.json());
-    expect(body.transcription).toMatchObject({ available: false, configured: true, provider: 'groq' });
+    expect(body.transcription).toEqual({ available: true, configured: true, provider: 'groq', maxUploadBytes: 10 * 1024 ** 2 });
+    // Feedback is a later milestone: configured, but honestly not available.
+    expect(body.feedback).toMatchObject({ available: false, configured: true });
     expect(response.body).not.toContain(secret);
   });
 });
@@ -107,7 +120,7 @@ describe('error handling', () => {
     const server = await build({}, (instance) => {
       instance.post('/api/test/validate', async (request) => parseInput(schema, request.body, 'Body'));
     });
-    const response = await server.inject({ method: 'POST', url: '/api/test/validate', payload: { text: '' } });
+    const response = await server.inject({ method: 'POST', url: '/api/test/validate', payload: { text: '' }, headers: CLIENT });
 
     expect(response.statusCode).toBe(400);
     const body = apiErrorResponseSchema.parse(response.json());
@@ -122,7 +135,7 @@ describe('error handling', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/api/test/echo',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...CLIENT },
       payload: '{"broken":',
     });
 
@@ -137,7 +150,7 @@ describe('error handling', () => {
     const response = await server.inject({
       method: 'POST',
       url: '/api/test/echo',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...CLIENT },
       payload: JSON.stringify({ text: 'x'.repeat(1024 * 1024 + 10) }),
     });
 

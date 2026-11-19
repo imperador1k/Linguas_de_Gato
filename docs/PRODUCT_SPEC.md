@@ -35,7 +35,7 @@ Each module has a status: **Available** (implemented), **In progress**, or **Pla
 
 | Module | Purpose | Key capabilities | Status |
 | --- | --- | --- | --- |
-| Listening | Comprehension of authentic audio/video | Media import, custom audio controls, subtitle import, synchronised transcript (files and YouTube), replay line, A-B loop, dictation with word-level feedback, saved sessions; comprehension questions planned | Available |
+| Listening | Comprehension of authentic audio/video | Media import, custom audio controls, automatic transcription (Groq Whisper), subtitle import, synchronised transcript (files and YouTube), replay line, A-B loop, dictation with word-level feedback, saved sessions; comprehension questions planned | Available |
 | Speaking | Fluency and pronunciation | Microphone recording, Whisper transcription, AI feedback on grammar, naturalness and fluency | Planned |
 | Writing | Accuracy and naturalness in long-form output | Essay prompts, correction with explanations, naturalness and register analysis | Planned |
 | Grammar | Targeted B2–C1 structures | Interactive exercises (transformation, gap-fill, error spotting) | Planned |
@@ -51,22 +51,24 @@ The Media Importer is shared infrastructure, used first by Listening and later b
 
 | Source | Formats | Handling |
 | --- | --- | --- |
-| Local file | MP3, WAV, M4A, MP4, WebM | Played in the browser through an object URL. **Never uploaded** unless the learner explicitly requests transcription. |
+| Local file | Playback: MP3, WAV, M4A, MP4, WebM, FLAC, OGG, MPGA. Transcription also accepts MPEG (which browsers usually can't play). | Played in the browser through an object URL. **Never uploaded** unless the learner explicitly clicks "Transcribe". |
 | YouTube | Public video URL | Played through the official embedded player (`youtube-nocookie.com`). Only the video ID is stored. |
 | Subtitles | SRT, WebVTT | Parsed in the browser into timestamped cues. |
 
-### 5.2 Transcription (future, user-initiated)
+### 5.2 Automatic transcription (user-initiated)
 
-- One explicit action ("Transcribe with Whisper") sends a **user-owned or user-authorised local file** to the server, which forwards it to Groq Whisper.
-- The server processes uploads in memory or in a temporary file that is deleted once the request completes. Nothing is stored permanently.
-- The result is a timestamped transcript, segmented into sentences, which feeds the synchronised transcript view.
-- YouTube media is never transcribed through Whisper, because the application does not access YouTube media streams. A YouTube video can be paired with subtitles the learner is entitled to use.
+- An explicit "Transcribe" action sends a **user-owned or user-authorised local file** through the local server to Groq Whisper. It is available from the Listening page (which creates a new session) and from an existing file session.
+- Options: language **English** (default) or **Detect automatically**; model **Fast** (`whisper-large-v3-turbo`, default) or **Higher accuracy** (`whisper-large-v3`).
+- The server streams the upload to a temporary file that is deleted when the request ends, including on errors and cancellation. Nothing is stored on the server.
+- **Privacy:** the UI states, next to the button, that the recording is sent to Groq, that this app keeps only a temporary copy, and that Groq's own retention is governed by the learner's Groq account settings and policies. The app makes no claim about Groq-side retention.
+- The result is a timestamped transcript, re-cut into sentence-sized lines using word timestamps, and saved with its word and segment timings in a new persistent session, ready for read-along or dictation.
+- YouTube media is never transcribed, because the application does not access YouTube media streams. A YouTube video can be paired with subtitles the learner is entitled to use.
 
 ### 5.3 Validation rules
 
-- Files are accepted by extension and, when the browser reports one, a consistent MIME type.
+- Files are accepted by extension and, when the browser reports one, a consistent MIME type. For transcription, the server also checks the file's content signature (magic bytes).
 - Local playback size limit: 2 GB, to guard against accidental drops of unrelated files.
-- Upload limit for transcription: reported by the server (`/api/capabilities`), initially 25 MB to match the Groq limit.
+- Upload limit for transcription: reported by the server (`/api/capabilities`); 25 MB by default (Groq's free tier), configurable up to 100 MB with `TRANSCRIPTION_MAX_UPLOAD_MB` when the Groq plan allows it. Longer recordings must be shortened or compressed; automatic splitting is planned.
 - Subtitle files: up to 5 MB.
 - YouTube input accepts standard watch, short-link, embed, live and Shorts URLs, or a bare 11-character video ID.
 
@@ -85,7 +87,9 @@ The Media Importer is shared infrastructure, used first by Listening and later b
 | Listening sessions, subtitles and transcripts | IndexedDB (`linguas-de-gato` database) | Until deleted by the learner |
 | Dictation attempts (last 20 per line) | IndexedDB | Until the session or its transcript is deleted or replaced |
 | Recurring mistakes | IndexedDB (later milestone) | Until deleted by the learner |
-| Audio sent for transcription | Server memory or temp file | Duration of the request only |
+| Generated transcripts (cues, word and segment timings, model and language used) | IndexedDB | Until deleted by the learner |
+| Audio sent for transcription | Server temp file (deleted in `finally`; swept at startup after a crash), then Groq | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
+| Transcription preferences (language, model) | `localStorage` | Until cleared |
 | API keys | Server environment only | Never sent to the browser |
 
 Data export and import (JSON) is planned for a later milestone (see ROADMAP.md).

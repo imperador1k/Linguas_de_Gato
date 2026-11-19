@@ -1,5 +1,11 @@
-import type { DictationRecord, ListeningSession, SubtitleCue, TranscriptRecord } from '@ldg/shared';
-import { sortByLastOpened, withMediaStored, type ListeningRepository } from './listening-repository';
+import type { DictationRecord, ListeningSession, TranscriptRecord } from '@ldg/shared';
+import {
+  sortByLastOpened,
+  toTranscriptRecord,
+  withMediaStored,
+  type ListeningRepository,
+  type TranscriptContent,
+} from './listening-repository';
 
 /**
  * Fallback used when IndexedDB is unavailable. Same contract, but data lives
@@ -22,9 +28,10 @@ export class MemoryListeningRepository implements ListeningRepository {
     return session ? structuredClone(session) : null;
   }
 
-  async createSession(session: ListeningSession): Promise<void> {
+  async createSession(session: ListeningSession, transcript?: TranscriptContent): Promise<void> {
     if (this.sessions.has(session.id)) throw new Error(`Session ${session.id} already exists.`);
     this.sessions.set(session.id, structuredClone(session));
+    if (transcript) this.transcripts.set(session.id, structuredClone(toTranscriptRecord(session.id, transcript)));
   }
 
   async updateSession(
@@ -50,10 +57,10 @@ export class MemoryListeningRepository implements ListeningRepository {
     return record ? structuredClone(record) : null;
   }
 
-  async replaceTranscript(session: ListeningSession, cues: readonly SubtitleCue[] | null): Promise<void> {
+  async replaceTranscript(session: ListeningSession, transcript: TranscriptContent | null): Promise<void> {
     this.sessions.set(session.id, structuredClone(session));
-    if (cues) {
-      this.transcripts.set(session.id, { sessionId: session.id, cues: structuredClone([...cues]) });
+    if (transcript) {
+      this.transcripts.set(session.id, structuredClone(toTranscriptRecord(session.id, transcript)));
     } else {
       this.transcripts.delete(session.id);
     }

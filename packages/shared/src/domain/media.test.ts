@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, getFileExtension, validateMediaFile, validateSubtitleFile } from './media.js';
+import {
+  MEDIA_ACCEPT_ATTRIBUTE,
+  TRANSCRIPTION_ACCEPT_ATTRIBUTE,
+  formatBytes,
+  getFileExtension,
+  validateMediaFile,
+  validateSubtitleFile,
+} from './media.js';
 
 const MB = 1024 ** 2;
 
@@ -43,6 +50,24 @@ describe('validateMediaFile', () => {
     const result = validateMediaFile(file);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.reason).toBe(reason);
+  });
+
+  it('accepts Groq-only formats for transcription but not for playback', () => {
+    expect(validateMediaFile({ name: 'talk.flac', type: 'audio/flac', size: MB }).ok).toBe(true);
+    expect(validateMediaFile({ name: 'talk.ogg', type: 'audio/ogg', size: MB }).ok).toBe(true);
+    const mpegPlayback = validateMediaFile({ name: 'old.mpeg', type: 'video/mpeg', size: MB });
+    expect(mpegPlayback.ok).toBe(false);
+    const mpegTranscription = validateMediaFile({ name: 'old.mpeg', type: 'video/mpeg', size: MB }, { purpose: 'transcription' });
+    expect(mpegTranscription.ok).toBe(true);
+    const mkv = validateMediaFile({ name: 'film.mkv', type: '', size: MB }, { purpose: 'transcription' });
+    expect(!mkv.ok && mkv.error.message).toContain('for transcription');
+  });
+
+  it('lists every Groq format in the transcription accept attribute', () => {
+    for (const extension of ['flac', 'mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'ogg', 'wav', 'webm']) {
+      expect(TRANSCRIPTION_ACCEPT_ATTRIBUTE.split(',')).toContain(`.${extension}`);
+    }
+    expect(MEDIA_ACCEPT_ATTRIBUTE.split(',')).not.toContain('.mpeg');
   });
 
   it('enforces the size limit', () => {

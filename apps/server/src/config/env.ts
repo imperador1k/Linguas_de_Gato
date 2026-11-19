@@ -1,4 +1,29 @@
+import { DEFAULT_TRANSCRIPTION_MAX_BYTES, MAX_CONFIGURABLE_TRANSCRIPTION_BYTES } from '@ldg/shared';
 import { z } from 'zod';
+
+const MB = 1024 ** 2;
+const LOOPBACK_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]']);
+
+const optionalNumber = (schema: z.ZodNumber) =>
+  z.preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), z.coerce.number().pipe(schema).optional());
+
+/**
+ * The Groq API base URL. Overridable for tests and local stubs, but the API
+ * key must never travel over plain HTTP to another machine: only https, or
+ * http on a loopback address, is accepted.
+ */
+const groqBaseUrl = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z
+    .string()
+    .trim()
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+      return url.protocol === 'https:' || (url.protocol === 'http:' && LOOPBACK_HOSTNAMES.has(url.hostname));
+    }, 'must use https (http is allowed only for 127.0.0.1/localhost)')
+    .default('https://api.groq.com/openai/v1'),
+);
 
 const optionalSecret = z.preprocess(
   (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
@@ -11,7 +36,19 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   GROQ_API_KEY: optionalSecret,
+  GROQ_API_BASE_URL: groqBaseUrl,
+  /** Upload limit in MB. 25 matches Groq's free tier; raise only if your Groq plan allows larger files. */
+  TRANSCRIPTION_MAX_UPLOAD_MB: optionalNumber(
+    z
+      .number()
+      .positive()
+      .max(MAX_CONFIGURABLE_TRANSCRIPTION_BYTES / MB, `must be at most ${MAX_CONFIGURABLE_TRANSCRIPTION_BYTES / MB}`),
+  ),
+  /** Upper bound for one provider request, upload included. */
+  TRANSCRIPTION_TIMEOUT_SECONDS: optionalNumber(z.number().int().min(10).max(1800)),
 });
+
+export const DEFAULT_TRANSCRIPTION_TIMEOUT_SECONDS = 300;
 
 export type LogLevel = z.infer<typeof envSchema>['LOG_LEVEL'];
 
@@ -24,6 +61,11 @@ export interface AppConfig {
   /** Absolute path to the built client; when set, the server also serves the SPA. */
   readonly clientDistDir: string | null;
   readonly groqApiKey: string | null;
+  readonly groqBaseUrl: string;
+  readonly transcription: {
+    readonly maxUploadBytes: number;
+    readonly timeoutMs: number;
+  };
 }
 
 export class ConfigError extends Error {
@@ -56,6 +98,14 @@ export function loadConfig(
     version: runtime.version,
     clientDistDir: runtime.clientDistDir,
     groqApiKey: env.GROQ_API_KEY ?? null,
+    groqBaseUrl: env.GROQ_API_BASE_URL.replace(/\/+$/, ''),
+    transcription: {
+      maxUploadBytes:
+        env.TRANSCRIPTION_MAX_UPLOAD_MB === undefined
+          ? DEFAULT_TRANSCRIPTION_MAX_BYTES
+          : Math.floor(env.TRANSCRIPTION_MAX_UPLOAD_MB * MB),
+      timeoutMs: (env.TRANSCRIPTION_TIMEOUT_SECONDS ?? DEFAULT_TRANSCRIPTION_TIMEOUT_SECONDS) * 1000,
+    },
   };
 }
 

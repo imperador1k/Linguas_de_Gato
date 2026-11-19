@@ -8,15 +8,56 @@ export interface MediaFormat {
   /** Kind assumed when the browser does not tell us more. */
   readonly kind: MediaKind;
   readonly mimeTypes: readonly string[];
+  /** Plays in current desktop browsers through <video>/<audio>. */
+  readonly playable: boolean;
+  /** Accepted by Groq speech-to-text (https://console.groq.com/docs/speech-to-text). */
+  readonly transcribable: boolean;
 }
 
 export const MEDIA_FORMATS: readonly MediaFormat[] = [
-  { extension: 'mp3', label: 'MP3', kind: 'audio', mimeTypes: ['audio/mpeg', 'audio/mp3'] },
-  { extension: 'wav', label: 'WAV', kind: 'audio', mimeTypes: ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'] },
-  { extension: 'm4a', label: 'M4A', kind: 'audio', mimeTypes: ['audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac'] },
-  { extension: 'mp4', label: 'MP4', kind: 'video', mimeTypes: ['video/mp4', 'audio/mp4'] },
-  { extension: 'webm', label: 'WebM', kind: 'video', mimeTypes: ['video/webm', 'audio/webm'] },
+  { extension: 'mp3', label: 'MP3', kind: 'audio', mimeTypes: ['audio/mpeg', 'audio/mp3'], playable: true, transcribable: true },
+  {
+    extension: 'wav',
+    label: 'WAV',
+    kind: 'audio',
+    mimeTypes: ['audio/wav', 'audio/x-wav', 'audio/wave', 'audio/vnd.wave'],
+    playable: true,
+    transcribable: true,
+  },
+  {
+    extension: 'm4a',
+    label: 'M4A',
+    kind: 'audio',
+    mimeTypes: ['audio/mp4', 'audio/x-m4a', 'audio/m4a', 'audio/aac'],
+    playable: true,
+    transcribable: true,
+  },
+  { extension: 'mp4', label: 'MP4', kind: 'video', mimeTypes: ['video/mp4', 'audio/mp4'], playable: true, transcribable: true },
+  { extension: 'webm', label: 'WebM', kind: 'video', mimeTypes: ['video/webm', 'audio/webm'], playable: true, transcribable: true },
+  { extension: 'flac', label: 'FLAC', kind: 'audio', mimeTypes: ['audio/flac', 'audio/x-flac'], playable: true, transcribable: true },
+  {
+    extension: 'ogg',
+    label: 'OGG',
+    kind: 'audio',
+    mimeTypes: ['audio/ogg', 'application/ogg', 'audio/vorbis', 'audio/opus', 'video/ogg'],
+    playable: true,
+    transcribable: true,
+  },
+  { extension: 'mpga', label: 'MPGA', kind: 'audio', mimeTypes: ['audio/mpeg', 'audio/mpga'], playable: true, transcribable: true },
+  // MPEG-1/2 program streams rarely play in browsers, but Groq can transcribe them.
+  { extension: 'mpeg', label: 'MPEG', kind: 'video', mimeTypes: ['video/mpeg', 'audio/mpeg'], playable: false, transcribable: true },
 ];
+
+export type MediaPurpose = 'playback' | 'transcription';
+
+export function mediaFormatsFor(purpose: MediaPurpose): readonly MediaFormat[] {
+  return MEDIA_FORMATS.filter((format) => (purpose === 'playback' ? format.playable : format.transcribable));
+}
+
+/** Conservative default that matches Groq's free-tier attachment limit. */
+export const DEFAULT_TRANSCRIPTION_MAX_BYTES = 25 * 1024 ** 2;
+/** Groq's highest documented upload limit (dev tier). Larger values are refused at startup. */
+export const MAX_CONFIGURABLE_TRANSCRIPTION_BYTES = 100 * 1024 ** 2;
 
 export type SubtitleFileFormat = 'srt' | 'vtt';
 
@@ -68,24 +109,38 @@ export function formatBytes(bytes: number): string {
   return `${rounded} ${units[unit]}`;
 }
 
-export const SUPPORTED_MEDIA_LABEL = MEDIA_FORMATS.map((format) => format.label).join(', ');
+export function mediaFormatLabel(purpose: MediaPurpose): string {
+  return mediaFormatsFor(purpose)
+    .map((format) => format.label)
+    .join(', ');
+}
 
 /** Value for an `<input type="file" accept>` attribute. */
-export const MEDIA_ACCEPT_ATTRIBUTE = MEDIA_FORMATS.map((format) => `.${format.extension}`).join(',');
+export function mediaAcceptAttribute(purpose: MediaPurpose): string {
+  return mediaFormatsFor(purpose)
+    .map((format) => `.${format.extension}`)
+    .join(',');
+}
+
+export const SUPPORTED_MEDIA_LABEL = mediaFormatLabel('playback');
+export const MEDIA_ACCEPT_ATTRIBUTE = mediaAcceptAttribute('playback');
+export const TRANSCRIPTION_MEDIA_LABEL = mediaFormatLabel('transcription');
+export const TRANSCRIPTION_ACCEPT_ATTRIBUTE = mediaAcceptAttribute('transcription');
 export const SUBTITLE_ACCEPT_ATTRIBUTE = SUBTITLE_EXTENSIONS.map((extension) => `.${extension}`).join(',');
 
 export function validateMediaFile(
   file: FileDescriptor,
-  options: { maxBytes?: number } = {},
+  options: { maxBytes?: number; purpose?: MediaPurpose } = {},
 ): Result<AcceptedMediaFile, FileRejection> {
+  const purpose = options.purpose ?? 'playback';
   const maxBytes = options.maxBytes ?? MAX_LOCAL_MEDIA_BYTES;
   const extension = getFileExtension(file.name);
-  const format = MEDIA_FORMATS.find((candidate) => candidate.extension === extension);
+  const format = mediaFormatsFor(purpose).find((candidate) => candidate.extension === extension);
 
   if (!format) {
     return err({
       reason: 'unsupported-format',
-      message: `This file type isn't supported. Use ${SUPPORTED_MEDIA_LABEL}.`,
+      message: `This file type isn't supported${purpose === 'transcription' ? ' for transcription' : ''}. Use ${mediaFormatLabel(purpose)}.`,
     });
   }
 

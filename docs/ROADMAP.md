@@ -25,12 +25,17 @@ Milestones are ordered by learning value and technical dependency. Each one ends
 - IndexedDB persistence (versioned, native API): sessions, transcripts, loop, playback position and speed, dictation progress. Session URLs (`/listening/session/:id`) restore on reload. Media is not copied unless the learner opts in.
 - Session list with deletion, storage usage, and an in-memory fallback when IndexedDB is unavailable.
 
-## M2 — Groq integration (transcription)
+## M2 — Automatic transcription (Groq Whisper) ✅
 
-- `modules/ai` Groq provider: Whisper transcription.
-- `POST /api/transcriptions`: multipart upload, size and type limits, temp-file cleanup, rate limit.
-- Sentence segmentation of the Whisper output (pure function in `shared`, tested).
-- "Transcribe with Whisper" action in Listening.
+- Groq transcription provider behind `modules/ai`: `whisper-large-v3-turbo` ("Fast", the default) or `whisper-large-v3` ("Higher accuracy"); `verbose_json`, segment and word timestamps, temperature 0; English or automatic language detection. Provider responses are validated and normalised with Zod.
+- `POST /api/transcriptions`: streamed multipart upload to a private temp directory; extension, MIME, size and magic-byte checks; a configurable limit (25 MB default, up to 100 MB); timeout; at most two concurrent jobs; cleanup on every path, including cancellation; stale-upload sweep at startup.
+- Request guards against CSRF and DNS rebinding on state-changing API calls.
+- Sentence-sized dictation cues built from word timestamps (pure function in `shared`, tested).
+- Listening: a "Transcribe" source tab (drag and drop, file metadata, language and model choice, privacy notice, real upload progress, cancellable processing) that creates a persistent session and offers "Start dictation". Existing file sessions can transcribe from their sidebar.
+
+### Later: long recordings
+
+Files above the upload limit are rejected with a clear message. Automatic splitting of long audio (chunking with overlap, then stitching the timestamps) is deferred, because it needs audio decoding (FFmpeg or WebCodecs) that this milestone intentionally avoids.
 
 ## M3 — Speaking
 

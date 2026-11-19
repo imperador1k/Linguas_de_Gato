@@ -1,10 +1,11 @@
 import { LANGUAGE_CODES, type CapabilitiesResponse, type HealthResponse } from '@ldg/shared';
 import type { FastifyPluginAsync } from 'fastify';
-import { DEFAULT_TRANSCRIPTION_UPLOAD_BYTES, type AiProviders } from '../modules/ai/providers.js';
+import type { AiProviders } from '../modules/ai/providers.js';
 
 export interface SystemRoutesOptions {
   readonly version: string;
   readonly ai: AiProviders;
+  readonly maxUploadBytes: number;
 }
 
 export const systemRoutes: FastifyPluginAsync<SystemRoutesOptions> = async (app, options) => {
@@ -24,7 +25,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOptions> = async (app,
         available: ai.transcription !== null,
         configured,
         provider: ai.transcription?.id ?? ai.configuredProvider,
-        maxUploadBytes: ai.transcription?.maxUploadBytes ?? DEFAULT_TRANSCRIPTION_UPLOAD_BYTES,
+        maxUploadBytes: options.maxUploadBytes,
       },
       feedback: {
         available: false,

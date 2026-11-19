@@ -48,7 +48,8 @@ export function MediaReconnect({ source, onAttach }: { source: FileSource; onAtt
             </div>
           </Notice>
         ) : (
-          <MediaDropzone onAccept={accept} prompt="Drop the original file here" />
+          // Sessions can hold any transcribable format (a superset of the playable ones).
+          <MediaDropzone onAccept={accept} prompt="Drop the original file here" purpose="transcription" />
         )}
       </CardContent>
     </Card>

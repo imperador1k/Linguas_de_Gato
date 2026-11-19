@@ -42,7 +42,8 @@ export function SourceTabs<T extends string>({
 
   return (
     <div>
-      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex gap-1 border-b">
+      {/* Scrolls rather than clipping if the labels ever outgrow a narrow screen. */}
+      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex gap-0.5 overflow-x-auto border-b sm:gap-1">
         {tabs.map((tab, index) => {
           const selected = tab.value === value;
           const Icon = tab.icon;
@@ -60,7 +61,7 @@ export function SourceTabs<T extends string>({
               tabIndex={selected ? 0 : -1}
               onClick={() => onChange(tab.value)}
               className={cn(
-                'relative -mb-px inline-flex h-11 items-center gap-2 border-b-2 px-3 text-sm transition-colors duration-150',
+                'relative inline-flex h-11 shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-sm whitespace-nowrap transition-colors duration-150 sm:gap-2 sm:px-3',
                 selected
                   ? 'border-foreground font-medium text-foreground'
                   : 'border-transparent text-muted-foreground hover:text-foreground',

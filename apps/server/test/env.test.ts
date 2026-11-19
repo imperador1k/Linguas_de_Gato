@@ -37,6 +37,35 @@ describe('loadConfig', () => {
   });
 });
 
+describe('transcription configuration', () => {
+  const MB = 1024 ** 2;
+
+  it('defaults to a conservative 25 MB limit, a 300 s timeout and the official Groq URL', () => {
+    const config = loadConfig({}, runtime);
+    expect(config.transcription).toEqual({ maxUploadBytes: 25 * MB, timeoutMs: 300_000 });
+    expect(config.groqBaseUrl).toBe('https://api.groq.com/openai/v1');
+  });
+
+  it("accepts an explicit larger limit up to Groq's 100 MB maximum", () => {
+    expect(loadConfig({ TRANSCRIPTION_MAX_UPLOAD_MB: '100' }, runtime).transcription.maxUploadBytes).toBe(100 * MB);
+    expect(loadConfig({ TRANSCRIPTION_MAX_UPLOAD_MB: '' }, runtime).transcription.maxUploadBytes).toBe(25 * MB);
+    expect(() => loadConfig({ TRANSCRIPTION_MAX_UPLOAD_MB: '101' }, runtime)).toThrow(/TRANSCRIPTION_MAX_UPLOAD_MB/);
+    expect(() => loadConfig({ TRANSCRIPTION_MAX_UPLOAD_MB: '0' }, runtime)).toThrow(ConfigError);
+    expect(() => loadConfig({ TRANSCRIPTION_MAX_UPLOAD_MB: 'lots' }, runtime)).toThrow(ConfigError);
+  });
+
+  it('validates the timeout range', () => {
+    expect(loadConfig({ TRANSCRIPTION_TIMEOUT_SECONDS: '60' }, runtime).transcription.timeoutMs).toBe(60_000);
+    expect(() => loadConfig({ TRANSCRIPTION_TIMEOUT_SECONDS: '5' }, runtime)).toThrow(ConfigError);
+  });
+
+  it('only allows https base URLs, or http on loopback, and strips trailing slashes', () => {
+    expect(loadConfig({ GROQ_API_BASE_URL: 'http://127.0.0.1:4010/v1/' }, runtime).groqBaseUrl).toBe('http://127.0.0.1:4010/v1');
+    expect(() => loadConfig({ GROQ_API_BASE_URL: 'http://example.com/v1' }, runtime)).toThrow(/GROQ_API_BASE_URL/);
+    expect(() => loadConfig({ GROQ_API_BASE_URL: 'ftp://127.0.0.1' }, runtime)).toThrow(ConfigError);
+  });
+});
+
 describe('isLoopbackHost', () => {
   it.each([
     ['127.0.0.1', true],

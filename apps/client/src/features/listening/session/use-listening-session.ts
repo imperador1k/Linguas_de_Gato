@@ -1,6 +1,6 @@
 import type { DictationRecord, ListeningSession, SubtitleCue, TranscriptSummary } from '@ldg/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ListeningRepository } from '../storage/listening-repository';
+import type { ListeningRepository, TranscriptContent } from '../storage/listening-repository';
 import { describeStorageError, useListeningStorage, type ListeningStorage } from '../storage/listening-storage';
 import { forgetSessionMedia, recallSessionMedia, rememberSessionMedia } from '../storage/session-media-cache';
 
@@ -82,11 +82,12 @@ export function useListeningSession(id: string) {
     [id, patch, run],
   );
 
+  /** Imported subtitles and generated transcripts both go through here (dictation history is cleared). */
   const replaceTranscript = useCallback(
-    (session: ListeningSession, summary: TranscriptSummary | null, cues: readonly SubtitleCue[] | null) => {
+    (session: ListeningSession, summary: TranscriptSummary | null, transcript: TranscriptContent | null) => {
       const next: ListeningSession = { ...session, transcript: summary, updatedAt: Date.now() };
-      patch((data) => ({ ...data, session: next, cues, dictation: [] }));
-      return run((repository) => repository.replaceTranscript(next, cues));
+      patch((data) => ({ ...data, session: next, cues: transcript?.cues ?? null, dictation: [] }));
+      return run((repository) => repository.replaceTranscript(next, transcript));
     },
     [patch, run],
   );

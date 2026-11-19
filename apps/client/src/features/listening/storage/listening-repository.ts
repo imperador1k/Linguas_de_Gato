@@ -1,4 +1,18 @@
-import type { DictationRecord, ListeningSession, SubtitleCue, TranscriptRecord } from '@ldg/shared';
+import type {
+  DictationRecord,
+  ListeningSession,
+  SubtitleCue,
+  TimedWord,
+  TranscriptRecord,
+  TranscriptSegment,
+} from '@ldg/shared';
+
+/** What a transcript write carries: cues always; provider timing when the transcript was generated. */
+export interface TranscriptContent {
+  readonly cues: readonly SubtitleCue[];
+  readonly segments?: readonly TranscriptSegment[];
+  readonly words?: readonly TimedWord[];
+}
 
 /**
  * Persistence boundary for the Listening module. The UI depends only on this
@@ -14,7 +28,8 @@ export interface ListeningRepository {
   /** All valid sessions, most recently opened first. Corrupt records are skipped. */
   listSessions(): Promise<ListeningSession[]>;
   getSession(id: string): Promise<ListeningSession | null>;
-  createSession(session: ListeningSession): Promise<void>;
+  /** Creates a session, and its transcript in the same transaction when given. */
+  createSession(session: ListeningSession, transcript?: TranscriptContent): Promise<void>;
   /**
    * Read-modify-write in one transaction, so concurrent updates (e.g. playback
    * position and a renamed title) never overwrite each other.
@@ -29,7 +44,7 @@ export interface ListeningRepository {
    * Stores (or with `null`, removes) the transcript and writes the session's
    * summary. Dictation history is cleared because cue identities change.
    */
-  replaceTranscript(session: ListeningSession, cues: readonly SubtitleCue[] | null): Promise<void>;
+  replaceTranscript(session: ListeningSession, transcript: TranscriptContent | null): Promise<void>;
 
   getMedia(sessionId: string): Promise<Blob | null>;
   /** Keeps a copy of the media file and marks the session accordingly. */
@@ -38,6 +53,15 @@ export interface ListeningRepository {
 
   listDictation(sessionId: string): Promise<DictationRecord[]>;
   putDictation(record: DictationRecord): Promise<void>;
+}
+
+export function toTranscriptRecord(sessionId: string, transcript: TranscriptContent): TranscriptRecord {
+  return {
+    sessionId,
+    cues: [...transcript.cues],
+    ...(transcript.segments ? { segments: [...transcript.segments] } : {}),
+    ...(transcript.words ? { words: [...transcript.words] } : {}),
+  };
 }
 
 export function sortByLastOpened(sessions: ListeningSession[]): ListeningSession[] {
