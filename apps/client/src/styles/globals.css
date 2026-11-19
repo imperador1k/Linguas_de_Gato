@@ -1,0 +1,233 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/newsreader/opsz.css';
+@import '@fontsource-variable/newsreader/opsz-italic.css';
+@import '@fontsource-variable/jetbrains-mono';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens. Semantic names follow the shadcn/ui convention so primitives
+ * stay portable; `brand` is our single accent (terracotta).
+ * See docs/DESIGN_SYSTEM.md for rationale and contrast notes.
+ */
+:root {
+  --radius: 0.625rem;
+
+  --background: #f7f5f0;
+  --foreground: #1d1c1a;
+  --card: #fdfcf9;
+  --card-foreground: #1d1c1a;
+  --popover: #fdfcf9;
+  --popover-foreground: #1d1c1a;
+  --primary: #1d1c1a;
+  --primary-foreground: #f7f5f0;
+  --secondary: #efece4;
+  --secondary-foreground: #1d1c1a;
+  --muted: #efece4;
+  --muted-foreground: #67635b;
+  --accent: #ebe7dd;
+  --accent-foreground: #1d1c1a;
+  --brand: #a8462a;
+  --brand-foreground: #ffffff;
+  --brand-subtle: #f4e6df;
+  --destructive: #b42318;
+  --destructive-subtle: #fbeae8;
+  --success: #2f6b45;
+  --success-subtle: #e6f0e9;
+  --border: #e3ded3;
+  --border-strong: #cfc8ba;
+  --input: #d9d3c6;
+  --ring: #a8462a;
+}
+
+.dark {
+  --background: #141311;
+  --foreground: #ece8df;
+  --card: #1c1b18;
+  --card-foreground: #ece8df;
+  --popover: #1c1b18;
+  --popover-foreground: #ece8df;
+  --primary: #ece8df;
+  --primary-foreground: #141311;
+  --secondary: #26241f;
+  --secondary-foreground: #ece8df;
+  --muted: #23211d;
+  --muted-foreground: #a29d93;
+  --accent: #2a2823;
+  --accent-foreground: #ece8df;
+  --brand: #e07a5a;
+  --brand-foreground: #141311;
+  --brand-subtle: #33221b;
+  --destructive: #f07066;
+  --destructive-subtle: #3a1d1a;
+  --success: #7cc092;
+  --success-subtle: #1b2c21;
+  --border: #2e2c28;
+  --border-strong: #3d3a34;
+  --input: #3a3731;
+  --ring: #e07a5a;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif: 'Newsreader Variable', 'Iowan Old Style', Georgia, serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'Cascadia Code', Menlo, monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-destructive: var(--destructive);
+  --color-destructive-subtle: var(--destructive-subtle);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    font-feature-settings: 'cv11', 'ss03';
+  }
+
+  ::selection {
+    background-color: color-mix(in oklab, var(--brand) 22%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  label[for],
+  summary {
+    cursor: pointer;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@layer components {
+  /* Seek and volume sliders. --range-progress is set inline (0%–100%). */
+  .media-range {
+    --range-progress: 0%;
+    appearance: none;
+    background: transparent;
+    height: 1.5rem;
+    width: 100%;
+    cursor: pointer;
+  }
+
+  .media-range:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .media-range::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      to right,
+      var(--foreground) 0,
+      var(--foreground) var(--range-progress),
+      var(--border-strong) var(--range-progress)
+    );
+  }
+
+  .media-range::-moz-range-track {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--border-strong);
+  }
+
+  .media-range::-moz-range-progress {
+    height: 4px;
+    border-radius: 9999px;
+    background: var(--foreground);
+  }
+
+  .media-range::-webkit-slider-thumb {
+    appearance: none;
+    margin-top: -6px;
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    background: var(--foreground);
+    border: 3px solid var(--card);
+    box-shadow: 0 0 0 1px var(--border-strong);
+  }
+
+  .media-range::-moz-range-thumb {
+    height: 16px;
+    width: 16px;
+    border-radius: 9999px;
+    background: var(--foreground);
+    border: 3px solid var(--card);
+    box-shadow: 0 0 0 1px var(--border-strong);
+  }
+
+  .media-range:focus-visible {
+    outline: none;
+  }
+
+  .media-range:focus-visible::-webkit-slider-thumb {
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  }
+
+  .media-range:focus-visible::-moz-range-thumb {
+    box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ring);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

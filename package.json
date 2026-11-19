@@ -1,0 +1,27 @@
+{
+  "name": "linguas-de-gato",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A personal, local-first language-learning workspace. English first.",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others-on-fail --names server,client --prefix-colors cyan,magenta \"npm run dev --workspace @ldg/server\" \"npm run dev --workspace @ldg/client\"",
+    "build": "npm run build --workspace @ldg/shared && npm run build --workspace @ldg/server && npm run build --workspace @ldg/client",
+    "start": "npm run start --workspace @ldg/server",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "concurrently": "^10.0.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}
