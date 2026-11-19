@@ -1,13 +1,26 @@
-import { formatSpokenDuration, formatTimestamp } from '@ldg/shared';
+import { formatSpokenDuration, formatTimestamp, type TimeRange } from '@ldg/shared';
 import { AudioLines, Pause, Play, RotateCcw, RotateCw, Volume2, VolumeX } from 'lucide-react';
 import { useId, type CSSProperties } from 'react';
 import { Button } from '@/components/ui/button';
-import { Kbd } from '@/components/ui/kbd';
 import { Notice } from '@/components/ui/notice';
 import { cn } from '@/lib/utils';
-import { PLAYBACK_RATES, type MediaPlayerControls, type MediaPlayerState } from './use-media-player';
+import { PLAYBACK_RATES, SKIP_SECONDS } from './playback/playback';
+import { ShortcutHints } from './playback/shortcut-hints';
+import type { MediaPlayerControls, MediaPlayerState } from './use-media-player';
 
-export const SKIP_SECONDS = 5;
+/** Marks the active loop on the seek track. Decorative: the practice bar states it in text. */
+export function LoopBand({ loop, duration }: { loop: TimeRange | null; duration: number }) {
+  if (!loop || duration <= 0) return null;
+  const left = Math.min(100, (loop.startMs / 1000 / duration) * 100);
+  const width = Math.max(0.5, Math.min(100 - left, ((loop.endMs - loop.startMs) / 1000 / duration) * 100));
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-brand/45"
+      style={{ left: `${left}%`, width: `${width}%` }}
+    />
+  );
+}
 
 function progressStyle(value: number, max: number): CSSProperties {
   const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
@@ -25,6 +38,7 @@ export function MediaPlayer({
   mediaRef,
   state,
   controls,
+  loop = null,
 }: {
   src: string;
   title: string;
@@ -32,6 +46,7 @@ export function MediaPlayer({
   mediaRef: (element: HTMLVideoElement | null) => void;
   state: MediaPlayerState;
   controls: MediaPlayerControls;
+  loop?: TimeRange | null;
 }) {
   const { playing, currentTime, duration, playbackRate, volume, muted, hasVideo, ready, error } = state;
   const effectiveVolume = muted ? 0 : volume;
@@ -79,19 +94,22 @@ export function MediaPlayer({
 
         <div className="flex items-center gap-3">
           <span className="w-14 shrink-0 font-mono text-xs text-muted-foreground tabular-nums">{formatTimestamp(currentTime)}</span>
-          <input
-            type="range"
-            className="media-range"
-            min={0}
-            max={duration || 0}
-            step={0.1}
-            value={Math.min(currentTime, duration || 0)}
-            disabled={!ready}
-            onChange={(event) => controls.seek(Number(event.target.value))}
-            aria-label="Seek"
-            aria-valuetext={`${formatSpokenDuration(currentTime)} of ${formatSpokenDuration(duration)}`}
-            style={progressStyle(currentTime, duration)}
-          />
+          <div className="relative min-w-0 flex-1">
+            <input
+              type="range"
+              className="media-range"
+              min={0}
+              max={duration || 0}
+              step={0.1}
+              value={Math.min(currentTime, duration || 0)}
+              disabled={!ready}
+              onChange={(event) => controls.seek(Number(event.target.value))}
+              aria-label="Seek"
+              aria-valuetext={`${formatSpokenDuration(currentTime)} of ${formatSpokenDuration(duration)}`}
+              style={progressStyle(currentTime, duration)}
+            />
+            <LoopBand loop={loop} duration={duration} />
+          </div>
           <span className="w-14 shrink-0 text-right font-mono text-xs text-muted-foreground tabular-nums">
             {formatTimestamp(duration)}
           </span>
@@ -174,22 +192,7 @@ export function MediaPlayer({
           </div>
         </div>
 
-        <p className="mt-4 hidden flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground md:flex">
-          <span className="inline-flex items-center gap-1.5">
-            <Kbd>Space</Kbd> play / pause
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Kbd>J</Kbd>
-            <Kbd>L</Kbd> ±{SKIP_SECONDS}s
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Kbd>,</Kbd>
-            <Kbd>.</Kbd> speed
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <Kbd>M</Kbd> mute
-          </span>
-        </p>
+        <ShortcutHints className="mt-4" />
       </div>
     </div>
   );

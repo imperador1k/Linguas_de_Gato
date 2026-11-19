@@ -49,6 +49,9 @@ describe('GET /api/health', () => {
     const csp = String(response.headers['content-security-policy']);
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain('frame-src https://www.youtube-nocookie.com https://www.youtube.com');
+    // Only the official YouTube IFrame API origin is added to scripts; no inline scripts.
+    expect(csp).toContain("script-src 'self' https://www.youtube.com");
+    expect(csp).not.toContain('unsafe-inline');
     expect(csp).toContain("frame-ancestors 'none'");
   });
 });

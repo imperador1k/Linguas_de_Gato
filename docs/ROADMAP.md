@@ -2,7 +2,7 @@
 
 Milestones are ordered by learning value and technical dependency. Each one ends with type checks, tests, a build and a browser verification.
 
-## M0 — Foundation ✅ (this milestone)
+## M0 — Foundation ✅
 
 - npm workspace: `apps/client`, `apps/server`, `packages/shared`.
 - Strict TypeScript, Vitest, dev, build and start scripts.
@@ -16,12 +16,14 @@ Milestones are ordered by learning value and technical dependency. Each one ends
   - SRT/WebVTT import with a synchronised, click-to-seek transcript.
   - Transcription card driven by server capabilities (disabled until M2).
 
-## M1 — Listening practice
+## M1 — Listening practice ✅
 
-- A-B loop and "replay current sentence".
-- Dictation mode: hide the cue text, type what you hear, see a word-level diff.
-- YouTube IFrame Player API so subtitles can be synchronised with YouTube playback.
-- Persist imported transcripts and sessions in IndexedDB.
+- Replay the current line (`R`), loop a line, and A-B loops with tenth-of-a-second points (`A`, `B`, `Esc`).
+- Dictation mode: pick a line, the reference stays hidden, type what you hear, then see accuracy, WER and a word-level diff (substitutions, near-miss spellings, missed and extra words). Retry any line; the last 20 attempts per line are kept.
+- Text comparison engine in `shared` (normalisation, Levenshtein word alignment, WER), with unit tests.
+- YouTube through the official IFrame Player API: the transcript follows playback, lines seek the video, and unavailable or non-embeddable videos are handled.
+- IndexedDB persistence (versioned, native API): sessions, transcripts, loop, playback position and speed, dictation progress. Session URLs (`/listening/session/:id`) restore on reload. Media is not copied unless the learner opts in.
+- Session list with deletion, storage usage, and an in-memory fallback when IndexedDB is unavailable.
 
 ## M2 — Groq integration (transcription)
 

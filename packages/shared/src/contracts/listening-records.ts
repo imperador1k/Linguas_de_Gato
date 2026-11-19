@@ -1,0 +1,103 @@
+import { z } from 'zod';
+import { languageCodeSchema } from '../domain/languages.js';
+
+/**
+ * Shapes of the Listening data persisted in the browser (IndexedDB). They are
+ * validated when read back, so a corrupt or outdated record is skipped rather
+ * than crashing the UI. They are also the basis of the future JSON export.
+ *
+ * Bump `LISTENING_RECORD_VERSION` (and migrate in the client's database
+ * upgrade) whenever a breaking change is made to these shapes.
+ */
+export const LISTENING_RECORD_VERSION = 1;
+
+const timestampSchema = z.number().int().nonnegative();
+const idSchema = z.string().min(1).max(128);
+
+export const subtitleCueRecordSchema = z.object({
+  id: z.string().min(1),
+  startMs: z.number().int().nonnegative(),
+  endMs: z.number().int().nonnegative(),
+  text: z.string(),
+});
+
+export const fileSourceSchema = z.object({
+  kind: z.literal('file'),
+  fileName: z.string().min(1).max(1024),
+  fileSize: z.number().int().nonnegative(),
+  lastModified: z.number().int(),
+  mimeType: z.string().max(255),
+  formatExtension: z.string().min(1).max(16),
+  mediaKind: z.enum(['audio', 'video']),
+  /** True when a copy of the file is kept in the `media` store. */
+  mediaStored: z.boolean(),
+});
+
+export const youTubeSourceSchema = z.object({
+  kind: z.literal('youtube'),
+  videoId: z.string().regex(/^[A-Za-z0-9_-]{11}$/),
+  startSeconds: z.number().nonnegative().optional(),
+});
+
+export const listeningSourceSchema = z.discriminatedUnion('kind', [fileSourceSchema, youTubeSourceSchema]);
+
+export const transcriptSummarySchema = z.object({
+  fileName: z.string().max(1024),
+  format: z.enum(['srt', 'vtt']),
+  cueCount: z.number().int().nonnegative(),
+  skippedBlocks: z.number().int().nonnegative(),
+});
+
+export const loopRecordSchema = z.object({
+  startMs: z.number().int().nonnegative(),
+  endMs: z.number().int().nonnegative(),
+});
+
+export const listeningSessionSchema = z.object({
+  id: idSchema,
+  version: z.literal(LISTENING_RECORD_VERSION),
+  language: languageCodeSchema,
+  title: z.string().min(1).max(200),
+  source: listeningSourceSchema,
+  transcript: transcriptSummarySchema.nullable(),
+  playback: z.object({
+    positionSeconds: z.number().nonnegative(),
+    playbackRate: z.number().positive().max(4),
+  }),
+  loop: loopRecordSchema.nullable(),
+  durationSeconds: z.number().nonnegative().nullable(),
+  createdAt: timestampSchema,
+  updatedAt: timestampSchema,
+  lastOpenedAt: timestampSchema,
+});
+
+export const transcriptRecordSchema = z.object({
+  sessionId: idSchema,
+  cues: z.array(subtitleCueRecordSchema),
+});
+
+export const dictationAttemptSchema = z.object({
+  submittedAt: timestampSchema,
+  answer: z.string().max(10_000),
+  wordErrorRate: z.number().nonnegative(),
+  accuracy: z.number().min(0).max(1),
+  referenceWords: z.number().int().nonnegative(),
+});
+
+export const dictationRecordSchema = z.object({
+  sessionId: idSchema,
+  cueId: z.string().min(1),
+  /** The reference at the time of the attempts; a changed transcript invalidates them. */
+  referenceText: z.string(),
+  attempts: z.array(dictationAttemptSchema),
+  updatedAt: timestampSchema,
+});
+
+export type FileSource = z.infer<typeof fileSourceSchema>;
+export type YouTubeSource = z.infer<typeof youTubeSourceSchema>;
+export type ListeningSource = z.infer<typeof listeningSourceSchema>;
+export type TranscriptSummary = z.infer<typeof transcriptSummarySchema>;
+export type ListeningSession = z.infer<typeof listeningSessionSchema>;
+export type TranscriptRecord = z.infer<typeof transcriptRecordSchema>;
+export type DictationAttempt = z.infer<typeof dictationAttemptSchema>;
+export type DictationRecord = z.infer<typeof dictationRecordSchema>;

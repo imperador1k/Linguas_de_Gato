@@ -1,29 +1,18 @@
 import { clamp } from '@ldg/shared';
 import { useEffect, useMemo, useState } from 'react';
+import { stepRate, type PlaybackControls, type PlaybackSnapshot } from './playback/playback';
 
-export const PLAYBACK_RATES = [0.5, 0.75, 0.9, 1, 1.1, 1.25, 1.5] as const;
+export { PLAYBACK_RATES } from './playback/playback';
 
-export interface MediaPlayerState {
-  readonly ready: boolean;
-  readonly playing: boolean;
-  readonly currentTime: number;
-  readonly duration: number;
-  readonly playbackRate: number;
+export interface MediaPlayerState extends PlaybackSnapshot {
   readonly volume: number;
-  readonly muted: boolean;
   /** False for audio files and for video containers without a video track. */
   readonly hasVideo: boolean;
   readonly error: string | null;
 }
 
-export interface MediaPlayerControls {
-  togglePlay(): void;
-  seek(seconds: number): void;
-  skip(deltaSeconds: number): void;
-  setPlaybackRate(rate: number): void;
-  stepPlaybackRate(direction: 1 | -1): void;
+export interface MediaPlayerControls extends PlaybackControls {
   setVolume(volume: number): void;
-  toggleMute(): void;
 }
 
 const INITIAL_STATE: MediaPlayerState = {
@@ -104,17 +93,21 @@ export function useMediaPlayer(): {
       if (!element || !Number.isFinite(element.duration)) return;
       element.currentTime = clamp(seconds, 0, element.duration);
     };
+    const play = () => {
+      element?.play().catch(() => {
+        // Rejections (e.g. interrupted by a new load) surface through the `error` event when relevant.
+      });
+    };
 
     return {
+      play,
+      pause() {
+        element?.pause();
+      },
       togglePlay() {
         if (!element) return;
-        if (element.paused || element.ended) {
-          element.play().catch(() => {
-            // Rejections (e.g. interrupted by a new load) surface through the `error` event when relevant.
-          });
-        } else {
-          element.pause();
-        }
+        if (element.paused || element.ended) play();
+        else element.pause();
       },
       seek,
       skip(deltaSeconds) {
@@ -124,10 +117,7 @@ export function useMediaPlayer(): {
         if (element) element.playbackRate = rate;
       },
       stepPlaybackRate(direction) {
-        if (!element) return;
-        const current = PLAYBACK_RATES.findIndex((rate) => rate >= element.playbackRate);
-        const index = clamp((current === -1 ? PLAYBACK_RATES.length - 1 : current) + direction, 0, PLAYBACK_RATES.length - 1);
-        element.playbackRate = PLAYBACK_RATES[index] ?? 1;
+        if (element) element.playbackRate = stepRate(element.playbackRate, direction);
       },
       setVolume(volume) {
         if (!element) return;
@@ -136,6 +126,9 @@ export function useMediaPlayer(): {
       },
       toggleMute() {
         if (element) element.muted = !element.muted;
+      },
+      getCurrentTime() {
+        return element?.currentTime ?? 0;
       },
     };
   }, [element]);

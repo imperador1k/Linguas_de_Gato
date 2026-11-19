@@ -29,6 +29,13 @@ export function formatSpokenDuration(totalSeconds: number): string {
   return parts.join(' ');
 }
 
+/** `m:ss.t` (tenths), for loop points where whole seconds are too coarse. Input in milliseconds. */
+export function formatPreciseTimestamp(totalMs: number): string {
+  const safe = Number.isFinite(totalMs) && totalMs > 0 ? Math.floor(totalMs / 100) : 0;
+  const tenths = safe % 10;
+  return `${formatTimestamp(Math.floor(safe / 10))}.${tenths}`;
+}
+
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }

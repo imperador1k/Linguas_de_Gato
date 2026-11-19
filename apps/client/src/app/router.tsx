@@ -36,6 +36,13 @@ export const router = createBrowserRouter([
           return { Component: ListeningPage };
         },
       },
+      {
+        path: 'listening/session/:sessionId',
+        lazy: async () => {
+          const { ListeningSessionPage } = await import('@/features/listening/listening-session-page');
+          return { Component: ListeningSessionPage };
+        },
+      },
       ...plannedRoutes,
       { path: '*', Component: NotFoundPage },
     ],

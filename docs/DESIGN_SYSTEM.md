@@ -52,7 +52,9 @@ Contrast: the brand colour is ≥ 5:1 against the background in both themes.
 - Icon-only buttons always have an `aria-label`. Decorative icons use `aria-hidden`.
 - Errors appear next to their field, are linked with `aria-describedby` and announced with `role="alert"`.
 - Status is never conveyed by colour alone; it always carries a text label.
-- Media player shortcuts: `Space`/`K` play and pause, `J`/`←` back 5 s, `L`/`→` forward 5 s, `,`/`.` slower or faster, `M` mute.
+- Media player shortcuts: `Space`/`K` play and pause, `J`/`←` back 5 s, `L`/`→` forward 5 s, `,`/`.` slower or faster, `M` mute, `R` replay the current line, `A`/`B` set loop points, `Esc` clear the loop. In the dictation box: `Ctrl+Enter` checks, `Ctrl+Space` replays the line.
+- Dictation feedback never relies on colour: wrong and extra words are struck through, corrections are underlined (dotted for close spellings), and missed words have a dashed outline, with screen-reader text for each.
+- Dialogs use the native `<dialog>` element (`components/ui/dialog.tsx`): focus containment, `Esc` and backdrop dismissal come from the browser.
 
 ## Anti-patterns (do not do)
 

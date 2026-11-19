@@ -32,6 +32,7 @@
   --brand-foreground: #ffffff;
   --brand-subtle: #f4e6df;
   --destructive: #b42318;
+  --destructive-foreground: #ffffff;
   --destructive-subtle: #fbeae8;
   --success: #2f6b45;
   --success-subtle: #e6f0e9;
@@ -60,6 +61,7 @@
   --brand-foreground: #141311;
   --brand-subtle: #33221b;
   --destructive: #f07066;
+  --destructive-foreground: #141311;
   --destructive-subtle: #3a1d1a;
   --success: #7cc092;
   --success-subtle: #1b2c21;
@@ -92,6 +94,7 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-subtle: var(--brand-subtle);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-subtle: var(--destructive-subtle);
   --color-success: var(--success);
   --color-success-subtle: var(--success-subtle);

@@ -16,7 +16,13 @@ function hasFiles(event: { dataTransfer: DataTransfer | null }): boolean {
   return Array.from(event.dataTransfer?.types ?? []).includes('Files');
 }
 
-export function MediaDropzone({ onAccept }: { onAccept: (file: File, accepted: AcceptedMediaFile) => void }) {
+export function MediaDropzone({
+  onAccept,
+  prompt = 'Drag an audio or video file here',
+}: {
+  onAccept: (file: File, accepted: AcceptedMediaFile) => void;
+  prompt?: string;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
@@ -95,7 +101,7 @@ export function MediaDropzone({ onAccept }: { onAccept: (file: File, accepted: A
         >
           <Upload aria-hidden="true" className="size-5" strokeWidth={1.75} />
         </span>
-        <p className="font-medium">{dragging ? 'Drop to open' : 'Drag an audio or video file here'}</p>
+        <p className="font-medium">{dragging ? 'Drop to open' : prompt}</p>
         <p id={hintId} className="mt-1.5 text-sm text-muted-foreground">
           {SUPPORTED_MEDIA_LABEL} · up to {formatBytes(MAX_LOCAL_MEDIA_BYTES)} · stays on this device
         </p>

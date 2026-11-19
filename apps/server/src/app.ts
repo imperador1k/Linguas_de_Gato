@@ -9,6 +9,9 @@ import { systemRoutes } from './routes/system.js';
 const JSON_BODY_LIMIT_BYTES = 1024 * 1024;
 
 const YOUTUBE_FRAME_ORIGINS = ['https://www.youtube-nocookie.com', 'https://www.youtube.com'];
+// The official IFrame Player API: https://www.youtube.com/iframe_api loads its
+// widget script from the same origin. Needed to sync transcripts with playback.
+const YOUTUBE_SCRIPT_ORIGINS = ['https://www.youtube.com'];
 
 export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
   const app = Fastify({
@@ -28,7 +31,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
       useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
+        scriptSrc: ["'self'", ...YOUTUBE_SCRIPT_ORIGINS],
         styleSrc: ["'self'"],
         imgSrc: ["'self'", 'data:', 'https://i.ytimg.com'],
         fontSrc: ["'self'", 'data:'],

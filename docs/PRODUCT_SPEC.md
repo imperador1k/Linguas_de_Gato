@@ -35,7 +35,7 @@ Each module has a status: **Available** (implemented), **In progress**, or **Pla
 
 | Module | Purpose | Key capabilities | Status |
 | --- | --- | --- | --- |
-| Listening | Comprehension of authentic audio/video | Media import, custom audio controls, subtitle import, synchronised transcript, dictation, comprehension questions | Foundation available |
+| Listening | Comprehension of authentic audio/video | Media import, custom audio controls, subtitle import, synchronised transcript (files and YouTube), replay line, A-B loop, dictation with word-level feedback, saved sessions; comprehension questions planned | Available |
 | Speaking | Fluency and pronunciation | Microphone recording, Whisper transcription, AI feedback on grammar, naturalness and fluency | Planned |
 | Writing | Accuracy and naturalness in long-form output | Essay prompts, correction with explanations, naturalness and register analysis | Planned |
 | Grammar | Targeted B2–C1 structures | Interactive exercises (transformation, gap-fill, error spotting) | Planned |
@@ -81,9 +81,10 @@ The Media Importer is shared infrastructure, used first by Listening and later b
 | Data | Location | Retention |
 | --- | --- | --- |
 | Preferences (theme) | `localStorage` | Until cleared |
-| Imported media | Browser memory (object URL) | Current session |
-| Subtitles and transcripts | Browser memory now; IndexedDB in a later milestone | Until deleted by the learner |
-| Practice history and mistakes | IndexedDB (later milestone) | Until deleted by the learner |
+| Imported media | Browser memory (object URL); optional opt-in copy in IndexedDB (≤ 500 MB per file) | Page lifetime, or until the copy or session is deleted |
+| Listening sessions, subtitles and transcripts | IndexedDB (`linguas-de-gato` database) | Until deleted by the learner |
+| Dictation attempts (last 20 per line) | IndexedDB | Until the session or its transcript is deleted or replaced |
+| Recurring mistakes | IndexedDB (later milestone) | Until deleted by the learner |
 | Audio sent for transcription | Server memory or temp file | Duration of the request only |
 | API keys | Server environment only | Never sent to the browser |
 

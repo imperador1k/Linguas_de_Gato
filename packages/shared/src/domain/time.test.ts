@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clamp, formatSpokenDuration, formatTimestamp } from './time.js';
+import { clamp, formatPreciseTimestamp, formatSpokenDuration, formatTimestamp } from './time.js';
 
 describe('formatTimestamp', () => {
   it.each([
@@ -37,5 +37,18 @@ describe('clamp', () => {
     expect(clamp(5, 0, 10)).toBe(5);
     expect(clamp(-1, 0, 10)).toBe(0);
     expect(clamp(11, 0, 10)).toBe(10);
+  });
+});
+
+describe('formatPreciseTimestamp', () => {
+  it('formats milliseconds with tenths of a second', () => {
+    expect(formatPreciseTimestamp(0)).toBe('0:00.0');
+    expect(formatPreciseTimestamp(12_345)).toBe('0:12.3');
+    expect(formatPreciseTimestamp(3_723_990)).toBe('1:02:03.9');
+  });
+
+  it('treats invalid input as zero', () => {
+    expect(formatPreciseTimestamp(Number.NaN)).toBe('0:00.0');
+    expect(formatPreciseTimestamp(-50)).toBe('0:00.0');
   });
 });

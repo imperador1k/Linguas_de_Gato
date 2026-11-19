@@ -42,9 +42,9 @@ export const MODULES: readonly LearningModule[] = [
     icon: Headphones,
     group: 'practice',
     status: 'available',
-    milestone: 'M0',
-    summary: 'Work through authentic audio and video at your own pace, with subtitles you can follow and replay.',
-    highlights: ['Local audio and video files', 'YouTube via the official player', 'SRT and WebVTT transcripts'],
+    milestone: 'M1',
+    summary: 'Work through authentic audio and video at your own pace: follow the transcript, loop hard passages and test yourself with dictation.',
+    highlights: ['Local files and YouTube', 'Replay line and A-B loops', 'Dictation with word-level feedback', 'Saved sessions'],
   },
   {
     id: 'speaking',

@@ -2,7 +2,7 @@
 
 A personal, local-first workspace for deliberate language practice. English comes first, aimed at moving from B2 to C1/C2.
 
-- **Listening** (available): local audio and video with a keyboard-friendly player, YouTube through the official embed, and SRT/WebVTT transcripts that follow playback.
+- **Listening** (available): local audio and video with a keyboard-friendly player, YouTube through the official IFrame Player API, SRT/WebVTT transcripts that follow playback, replay-line and A-B loops, and line-by-line dictation with a word-level diff. Sessions are saved in the browser (IndexedDB) and survive reloads.
 - **Speaking, Writing, Grammar, Reading, Vocabulary, Progress**: planned (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ## Requirements

@@ -1,5 +1,4 @@
-import { buildYouTubeEmbedUrl, buildYouTubeWatchUrl, parseYouTubeUrl, type YouTubeVideoRef } from '@ldg/shared';
-import { ExternalLink } from 'lucide-react';
+import { parseYouTubeUrl, type YouTubeVideoRef } from '@ldg/shared';
 import { useId, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -56,38 +55,5 @@ export function YouTubeSourceForm({ onLoad }: { onLoad: (ref: YouTubeVideoRef) =
         downloaded.
       </p>
     </form>
-  );
-}
-
-export function YouTubePlayer({ video }: { video: YouTubeVideoRef }) {
-  return (
-    <div className="overflow-hidden rounded-lg border bg-card">
-      <div className="aspect-video bg-black">
-        <iframe
-          key={video.videoId}
-          src={buildYouTubeEmbedUrl(video)}
-          title="YouTube video player"
-          className="size-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          referrerPolicy="strict-origin-when-cross-origin"
-          allowFullScreen
-        />
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6">
-        <p className="text-sm text-muted-foreground">
-          Video <span className="font-mono text-xs text-foreground">{video.videoId}</span>
-        </p>
-        <a
-          href={buildYouTubeWatchUrl(video)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm underline decoration-border-strong underline-offset-4 hover:decoration-brand"
-        >
-          Open on YouTube
-          <ExternalLink aria-hidden="true" className="size-3.5" />
-          <span className="sr-only">(opens in a new tab)</span>
-        </a>
-      </div>
-    </div>
   );
 }
