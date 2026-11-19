@@ -11,7 +11,7 @@ import { AppError } from '../errors.js';
  * - DNS rebinding: point a hostile hostname at 127.0.0.1 and talk to the API
  *   "same-origin", which a custom-header check alone doesn't stop.
  *
- * Defences, all required for non-GET /api requests:
+ * Defences, all required for every request except GET/HEAD/OPTIONS (whatever its path):
  * 1. a loopback Host header (only when the server is bound to loopback);
  * 2. no cross-site/same-site `Sec-Fetch-Site` (modern browsers always send it);
  * 3. the custom client header, which forces a preflight this server never answers.
@@ -40,7 +40,9 @@ export interface RequestGuardOptions {
 }
 
 export function checkStateChangingRequest(request: FastifyRequest, options: RequestGuardOptions): void {
-  if (SAFE_METHODS.has(request.method) || !request.url.startsWith('/api/')) return;
+  // Deliberately path-independent: the router decodes paths (`/%61pi/...` matches `/api/...`), so any
+  // prefix test on the raw URL can be bypassed. The server has no state-changing routes outside the API.
+  if (SAFE_METHODS.has(request.method)) return;
 
   if (options.enforceLoopbackHost) {
     const hostname = hostnameOf(request.headers.host);

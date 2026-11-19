@@ -114,7 +114,7 @@ All responses are JSON. Every error uses one envelope:
 
 Error codes: `VALIDATION_ERROR` (400), `FORBIDDEN` (403), `NOT_FOUND` (404), `PAYLOAD_TOO_LARGE` (413), `UNSUPPORTED_MEDIA_TYPE` (415), `RATE_LIMITED` (429), `PROVIDER_ERROR` (502), `PROVIDER_UNAVAILABLE` (503), `PROVIDER_TIMEOUT` (504), `INTERNAL_ERROR` (500). A 500 never includes stack traces or internal messages.
 
-State-changing requests (anything but GET/HEAD/OPTIONS under `/api`) must send `X-LDG-Client: web` and pass the request guards (§7).
+State-changing requests (anything but GET/HEAD/OPTIONS) must send `X-LDG-Client: web` and pass the request guards (§7).
 
 ### 5.1 Implemented
 
@@ -173,7 +173,7 @@ The exact Groq request formats will be verified against current documentation wh
 - **Secrets:** `GROQ_API_KEY` exists only in `apps/server/.env` (git-ignored). The client bundle has no access to it (verified by scanning the build). The provider keeps it in a private class field, and any key-like text in a provider error is redacted before it reaches a response. Vite only exposes `VITE_*` variables, and none are secret. `GROQ_API_BASE_URL` accepts only https, or http on loopback, so the key never crosses a network unencrypted.
 - **Input validation:** Zod for env, request bodies, multipart fields and provider responses. Uploads: an allow-listed extension, a MIME type consistent with it, the size limit enforced while streaming, a magic-byte check of the content (`detectMediaContainer`), and limits of one file and two known fields.
 - **Uploads on disk:** a fresh `mkdtemp` directory per request (unpredictable name, no user-controlled path segments), a fixed file name `upload.<ext>`, mode `0600`, `wx` flag; deleted in `finally`.
-- **Request guards (CSRF / DNS rebinding):** a local server is reachable by any web page the learner has open. For state-changing `/api` calls, `plugins/request-guards.ts` requires (1) a loopback `Host` when bound to loopback, (2) no `Sec-Fetch-Site: cross-site/same-site`, and (3) the `X-LDG-Client` header, which cross-origin pages cannot send without a CORS preflight that the server never grants. It runs `onRequest`, so blocked uploads are never read.
+- **Request guards (CSRF / DNS rebinding):** a local server is reachable by any web page the learner has open. For every state-changing request (any method but GET/HEAD/OPTIONS, **whatever the path**, because the router decodes paths and `/%61pi/…` matches `/api/…`), `plugins/request-guards.ts` requires (1) a loopback `Host` when bound to loopback, (2) no `Sec-Fetch-Site: cross-site/same-site`, and (3) the `X-LDG-Client` header, which cross-origin pages cannot send without a CORS preflight that the server never grants. It runs `onRequest`, so blocked uploads are never read.
 - **Headers:** `@fastify/helmet` with a restrictive CSP. `script-src` is `'self'` plus `https://www.youtube.com` (the official IFrame API only, never inline), `frame-src` is limited to YouTube's embed origins and `media-src` to `self` and `blob:`.
 - **Error handling:** one central handler maps known errors to the envelope and logs unknown errors server-side only.
 - **Network exposure:** binds to `127.0.0.1` by default, has no CORS, and the global JSON body limit stays at 1 MB; only the transcription route accepts a larger body (the upload limit plus multipart overhead).

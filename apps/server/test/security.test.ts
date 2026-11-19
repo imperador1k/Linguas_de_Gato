@@ -62,6 +62,23 @@ describe('request guards on state-changing API routes', () => {
     expect(await readdir(tempRoot)).toEqual([]);
   });
 
+  it.each(['/%61pi/transcriptions', '/api/%74ranscriptions', '/%2561pi/transcriptions', '/api/transcriptions?x=1', '/api/transcriptions/'])(
+    'cannot be bypassed with an alternative spelling of the path (%s)',
+    async (url) => {
+      const server = await build();
+      const response = await server.inject({
+        method: 'POST',
+        url,
+        payload: formBody.payload,
+        headers: { 'content-type': formBody.contentType, 'sec-fetch-site': 'cross-site' },
+      });
+      // Whatever the router makes of the path, the guard must answer first.
+      expect(response.statusCode).toBe(403);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(await readdir(tempRoot)).toEqual([]);
+    },
+  );
+
   it('blocks requests without the client header, even from old browsers without Sec-Fetch-Site', async () => {
     const server = await build();
     const response = await server.inject({
@@ -121,6 +138,12 @@ describe('request guards on state-changing API routes', () => {
       headers: { host: '192.168.1.20:3001', 'content-type': formBody.contentType, [CLIENT_HEADER]: CLIENT_HEADER_VALUE },
     });
     expect(response.statusCode).not.toBe(403);
+  });
+
+  it('also guards state-changing requests outside /api', async () => {
+    const server = await build();
+    const response = await server.inject({ method: 'POST', url: '/anything', headers: { 'sec-fetch-site': 'cross-site' } });
+    expect(response.statusCode).toBe(403);
   });
 
   it('leaves read-only requests alone', async () => {
