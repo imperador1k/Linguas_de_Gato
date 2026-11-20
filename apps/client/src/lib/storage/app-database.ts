@@ -13,11 +13,15 @@ import { openDatabase } from './indexed-db';
  * - v3 (AI exercise generation): listeningExercises, indexed by session.
  *   Generated speaking topics reuse speakingTopics (an optional field, no
  *   schema change). Existing stores and their records are left untouched.
+ * - v4 (M4 Writing & Grammar): writingTasks, writingDrafts (one per task),
+ *   writingAttempts (indexed by task), grammarSets. Existing stores and their
+ *   records are left untouched.
  */
 export const APP_DB_NAME = 'linguas-de-gato';
-export const APP_DB_VERSION = 3;
+export const APP_DB_VERSION = 4;
 
 export const LISTENING_EXERCISES_BY_SESSION = 'bySession';
+export const WRITING_ATTEMPTS_BY_TASK = 'byTask';
 
 export const STORES = {
   sessions: 'sessions',
@@ -28,6 +32,10 @@ export const STORES = {
   speakingRecordings: 'speakingRecordings',
   speakingTopics: 'speakingTopics',
   listeningExercises: 'listeningExercises',
+  writingTasks: 'writingTasks',
+  writingDrafts: 'writingDrafts',
+  writingAttempts: 'writingAttempts',
+  grammarSets: 'grammarSets',
 } as const;
 
 export function upgradeAppDatabase(database: IDBDatabase, oldVersion: number): void {
@@ -46,6 +54,14 @@ export function upgradeAppDatabase(database: IDBDatabase, oldVersion: number): v
   if (oldVersion < 3) {
     const exercises = database.createObjectStore(STORES.listeningExercises, { keyPath: 'id' });
     exercises.createIndex(LISTENING_EXERCISES_BY_SESSION, 'sessionId', { unique: false });
+  }
+  if (oldVersion < 4) {
+    database.createObjectStore(STORES.writingTasks, { keyPath: 'id' });
+    // Keyed by task: exactly one working draft per task, never duplicated copies.
+    database.createObjectStore(STORES.writingDrafts, { keyPath: 'taskId' });
+    const attempts = database.createObjectStore(STORES.writingAttempts, { keyPath: 'id' });
+    attempts.createIndex(WRITING_ATTEMPTS_BY_TASK, 'taskId', { unique: false });
+    database.createObjectStore(STORES.grammarSets, { keyPath: 'id' });
   }
 }
 

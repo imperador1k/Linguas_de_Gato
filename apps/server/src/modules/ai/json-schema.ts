@@ -8,6 +8,7 @@ export type JsonSchema = Record<string, unknown>;
 
 export const string: JsonSchema = { type: 'string' };
 export const integer: JsonSchema = { type: 'integer' };
+export const boolean: JsonSchema = { type: 'boolean' };
 export const stringArray: JsonSchema = { type: 'array', items: string };
 export const nullableString: JsonSchema = { type: ['string', 'null'] };
 export const nullableInteger: JsonSchema = { type: ['integer', 'null'] };

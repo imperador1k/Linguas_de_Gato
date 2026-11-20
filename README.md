@@ -4,7 +4,9 @@ A personal, local-first workspace for deliberate language practice. English come
 
 - **Listening** (available): local audio and video with a keyboard-friendly player, **automatic transcription with Groq Whisper**, YouTube through the official IFrame Player API, SRT/WebVTT transcripts that follow playback, replay-line and A-B loops, line-by-line dictation with a word-level diff, and AI comprehension exercises grounded in the transcript. Sessions are saved in the browser (IndexedDB) and survive reloads.
 - **Speaking** (available): B2 and C1 speaking tasks, your own topics and AI-generated B2/C1/C2 tasks, microphone recording, a transcript you review before anything is assessed, detailed AI feedback where every correction quotes your own words, fluency measurements from timestamps, and exercises built from your mistakes. Attempts are saved in the browser.
-- **Writing, Grammar, Reading, Vocabulary, Progress**: planned (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+- **Writing** (available): AI-generated B2–C2 tasks in 12 formats, a distraction-free editor with autosaved drafts and live word counts, and feedback where every correction quotes your text and errors are kept apart from optional suggestions; an improved version only if you ask for it.
+- **Grammar** (available): AI-generated exercises on 12 advanced areas in six question types, checked against a verified answer key, with rules, explanations of every option, retries and your result history.
+- **Reading, Vocabulary, Progress**: planned (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ## Requirements
 
@@ -37,10 +39,10 @@ Open http://127.0.0.1:5173. The API runs on http://127.0.0.1:3001, and Vite prox
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `GROQ_API_KEY` | (empty) | Enables transcription, speaking feedback and exercise generation. |
+| `GROQ_API_KEY` | (empty) | Enables transcription, speaking and writing feedback, grammar second opinions and exercise generation. |
 | `TRANSCRIPTION_MAX_UPLOAD_MB` | `25` | Groq's free-tier limit. Raise it (up to 100) only if your Groq plan accepts larger files. |
 | `TRANSCRIPTION_TIMEOUT_SECONDS` | `300` | Upper bound for one transcription request (10–1800). |
-| `GROQ_CHAT_MODEL` | `openai/gpt-oss-120b` | Chat model for speaking feedback and exercise generation. |
+| `GROQ_CHAT_MODEL` | `openai/gpt-oss-120b` | Chat model for all feedback and exercise generation. |
 | `GROQ_CHAT_RESPONSE_FORMAT` | `auto` | `auto` uses strict JSON Schema for models documented to support it, JSON Object Mode otherwise; `json_schema` or `json_object` force one. |
 | `GROQ_REASONING_EFFORT` | `medium` | `low`, `medium` or `high`; sent only to GPT-OSS models. |
 | `ASSESSMENT_TIMEOUT_SECONDS` | `120` | Upper bound for one feedback or generation request (10–600). |
@@ -61,6 +63,7 @@ There are no accounts, no server database and no analytics. Practice data stays 
 
 - When you click **Transcribe**, the recording is sent through the local server to Groq. The server keeps it only in a temporary file that is deleted when the request ends.
 - When you ask for **speaking feedback**, your confirmed transcript (not the audio) is sent to Groq. It is not logged by this app.
-- When you press **Generate** (a speaking task or listening exercises), your settings and optional topic text, or the session's transcript text, are sent to Groq. Nothing is generated without that click.
+- When you press **Generate** (a speaking or writing task, listening or grammar exercises), your settings and optional topic text, or the session's transcript text, are sent to Groq. Nothing is generated without that click.
+- Writing drafts stay in your browser. Submitting for feedback, asking for an improved version, or asking for a grammar second opinion sends that text to Groq.
 - Speaking recordings stay in memory unless you tick "Keep this recording"; you can delete a saved recording or a whole attempt at any time.
 - Groq's handling and retention of what you send are governed by your Groq account settings and Groq's policies, which this app does not control.

@@ -58,16 +58,22 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 - Pronunciation and prosody feedback needs dedicated audio analysis (phoneme alignment), not a transcript; deferred.
 - A view of recurring mistakes across attempts belongs with Progress (M7).
 
-## M4 — Writing
+## M4 — Writing & Grammar Lab ✅
 
-- Prompts by register and genre (essay, email, report).
-- Correction with explanations, naturalness and collocation suggestions.
-- Side-by-side diff view.
+- Writing: AI-generated B2/C1/C2 tasks in 12 formats (essays, emails, report, proposal, article, review, summary, paraphrase, reformulation) with register, target length, required elements, criteria, objectives and useful language; preview, regenerate, edit, save. No model answers.
+- Writing environment: autosaved drafts (one per task) restored after reload, live word and character counts against the range, optional timer, draft management.
+- Writing feedback: seven dimensions with qualitative levels; every correction quotes the text (verified by span), is classified as an error or a stylistic suggestion, and explains why it matters; annotated text, errors-only version and an optional improved version.
+- Grammar: AI-generated sets on 12 advanced areas in six question types, verified for ambiguity and consistency; deterministic scoring with harmless-difference normalisation; rules and distractor explanations after checking; retries with result history; optional AI second opinion on open answers that never changes the score.
+- Database v4 (writing tasks, drafts, attempts, grammar sets).
 
-## M5 — Grammar and Vocabulary
+### Later: writing and grammar
 
-- B2–C1 grammar exercise engine: content format in `shared`, deterministic evaluation.
-- Contextual vocabulary capture from Listening and Reading, collocation sets, spaced review.
+- Side-by-side diff of the original and improved versions.
+- Grammar sets generated from recurring mistakes in Writing and Speaking (with Progress, M7).
+
+## M5 — Vocabulary
+
+- Contextual vocabulary capture from Listening, Reading and Writing feedback, collocation sets, spaced review.
 
 ## M6 — Reading
 

@@ -19,23 +19,20 @@ import {
   type VocabularyItem,
 } from '@ldg/shared';
 import { LoaderCircle, RefreshCw, Sparkles, X } from 'lucide-react';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useId, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AutoGrowTextarea } from '@/components/ui/auto-grow-textarea';
 import { Button } from '@/components/ui/button';
+import { ChoiceGroup, FIELD_CLASS, SELECT_CLASS } from '@/components/ui/choice-group';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
+import { useElapsedSeconds } from '@/lib/use-elapsed-seconds';
 import { useGenerationJob } from '@/lib/use-generation-job';
 import { cn } from '@/lib/utils';
 import { CEFR_DISCLAIMER, FORMAT_LABELS, LEVEL_DESCRIPTIONS, SKILL_FOCUS_LABELS } from './generation-labels';
 import { CATEGORY_LABELS } from './prompt-library';
 import { describeSpeakingStorageError, type SpeakingStorage } from './storage/speaking-storage';
-
-export const FIELD_CLASS =
-  'w-full rounded-md border border-input bg-card px-3.5 py-2.5 text-[0.9375rem] leading-relaxed hover:border-border-strong focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 focus-visible:outline-none';
-const SELECT_CLASS =
-  'h-11 w-full rounded-md border border-input bg-card px-3 text-[0.9375rem] hover:border-border-strong focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 focus-visible:outline-none';
 
 const toLines = (text: string) =>
   text
@@ -71,54 +68,6 @@ function toEditable(draft: CustomTopicDraft): Editable {
     followUps: draft.generated?.followUpQuestions.join('\n') ?? '',
     vocabulary: draft.generated?.vocabulary ?? [],
   };
-}
-
-function useElapsedSeconds(startedAt: number | null): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    if (startedAt === null) return;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [startedAt]);
-  return startedAt === null ? 0 : Math.max(0, Math.round((now - startedAt) / 1000));
-}
-
-function ChoiceGroup<T extends string | number>({
-  legend,
-  value,
-  options,
-  onChange,
-  disabled,
-  wide,
-}: {
-  legend: string;
-  value: T;
-  options: ReadonlyArray<{ value: T; label: ReactNode; hint?: string }>;
-  onChange: (value: T) => void;
-  disabled?: boolean;
-  wide?: boolean;
-}) {
-  const name = useId();
-  return (
-    <fieldset disabled={disabled} className="min-w-0">
-      <legend className="mb-2 text-sm font-medium">{legend}</legend>
-      <div className={cn('grid gap-2', wide ? 'sm:grid-cols-2' : 'grid-cols-3 sm:flex sm:flex-wrap')}>
-        {options.map((option) => (
-          <label
-            key={String(option.value)}
-            className={cn(
-              'flex cursor-pointer flex-col justify-center rounded-md border px-3.5 py-2.5 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring',
-              value === option.value ? 'border-foreground bg-accent/60' : 'border-input hover:border-border-strong',
-            )}
-          >
-            <input type="radio" name={name} checked={value === option.value} onChange={() => onChange(option.value)} className="sr-only" />
-            <span className="text-sm font-medium">{option.label}</span>
-            {option.hint ? <span className="mt-0.5 text-xs text-muted-foreground">{option.hint}</span> : null}
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
 }
 
 export interface TopicGeneratorProps {

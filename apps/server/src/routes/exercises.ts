@@ -41,6 +41,7 @@ export const exerciseRoutes: FastifyPluginAsync<ExerciseRoutesOptions> = async (
             ...(response.result.kind === 'listening'
               ? { segments: body.kind === 'listening' ? body.segments.length : 0, questions: response.result.questions.length, discarded: response.result.discarded }
               : {}),
+            ...(response.result.kind === 'grammar' ? { questions: response.result.set.questions.length, discarded: response.result.discarded } : {}),
             elapsedMs: Date.now() - startedAt,
           },
           'exercise generation completed',

@@ -65,6 +65,41 @@ export const router = createBrowserRouter([
           return { Component: SpeakingAttemptPage };
         },
       },
+      {
+        path: 'writing',
+        lazy: async () => {
+          const { WritingLabPage } = await import('@/features/writing/writing-lab-page');
+          return { Component: WritingLabPage };
+        },
+      },
+      {
+        path: 'writing/tasks/:taskId',
+        lazy: async () => {
+          const { WritingEditorPage } = await import('@/features/writing/writing-editor-page');
+          return { Component: WritingEditorPage };
+        },
+      },
+      {
+        path: 'writing/attempts/:attemptId',
+        lazy: async () => {
+          const { WritingAttemptPage } = await import('@/features/writing/writing-attempt-page');
+          return { Component: WritingAttemptPage };
+        },
+      },
+      {
+        path: 'grammar',
+        lazy: async () => {
+          const { GrammarLabPage } = await import('@/features/grammar/grammar-lab-page');
+          return { Component: GrammarLabPage };
+        },
+      },
+      {
+        path: 'grammar/sets/:setId',
+        lazy: async () => {
+          const { GrammarSetPage } = await import('@/features/grammar/grammar-set-page');
+          return { Component: GrammarSetPage };
+        },
+      },
       ...plannedRoutes,
       { path: '*', Component: NotFoundPage },
     ],

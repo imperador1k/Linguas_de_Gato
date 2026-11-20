@@ -27,9 +27,9 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOptions> = async (app,
         provider: ai.transcription?.id ?? ai.configuredProvider,
         maxUploadBytes: options.maxUploadBytes,
       },
-      // Speaking feedback (M3). Writing feedback will report through the same flag when it exists.
+      // AI feedback: speaking (M3), writing and grammar answer review (M4) share the chat provider.
       feedback: {
-        available: ai.assessment !== null,
+        available: ai.assessment !== null && ai.writing !== null && ai.grammar !== null,
         configured,
         provider: ai.assessment?.id ?? ai.configuredProvider,
       },

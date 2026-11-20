@@ -7,6 +7,8 @@ import {
   targetDurationSchema,
   vocabularyItemSchema,
 } from './speaking.js';
+import { grammarGenerationRequestSchema, grammarSetSchema } from './grammar.js';
+import { writingGenerationRequestSchema, writingTaskSchema } from './writing.js';
 
 /**
  * AI exercise generation (shared by learning modules).
@@ -171,7 +173,12 @@ export type ListeningQuestion = z.infer<typeof listeningQuestionSchema>;
 
 // --- Request / response unions --------------------------------------------------
 
-export const generationRequestSchema = z.discriminatedUnion('kind', [speakingGenerationRequestSchema, listeningGenerationRequestSchema]);
+export const generationRequestSchema = z.discriminatedUnion('kind', [
+  speakingGenerationRequestSchema,
+  listeningGenerationRequestSchema,
+  writingGenerationRequestSchema,
+  grammarGenerationRequestSchema,
+]);
 export type GenerationRequest = z.infer<typeof generationRequestSchema>;
 
 export const generationResultSchema = z.discriminatedUnion('kind', [
@@ -181,6 +188,15 @@ export const generationResultSchema = z.discriminatedUnion('kind', [
       kind: z.literal('listening'),
       questions: z.array(listeningQuestionSchema).min(1).max(LISTENING_GENERATION_LIMITS.maxQuestions),
       /** Model questions dropped because their evidence or structure didn't check out. */
+      discarded: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z.object({ kind: z.literal('writing'), task: writingTaskSchema }).strict(),
+  z
+    .object({
+      kind: z.literal('grammar'),
+      set: grammarSetSchema,
+      /** Model questions dropped as ambiguous, inconsistent or of an unrequested type. */
       discarded: z.number().int().nonnegative(),
     })
     .strict(),

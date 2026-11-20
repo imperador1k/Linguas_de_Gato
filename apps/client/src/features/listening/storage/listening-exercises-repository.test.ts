@@ -213,8 +213,8 @@ describe('database migration v2 → v3', () => {
     speaking.close();
 
     const raw = await openAppDatabase(factory);
+    // Later versions upgrade further; the v3 store must exist whatever the current version is.
     expect(raw.version).toBe(APP_DB_VERSION);
-    expect(raw.version).toBe(3);
     expect([...raw.transaction('listeningExercises', 'readonly').objectStore('listeningExercises').indexNames]).toEqual(['bySession']);
     raw.close();
   });

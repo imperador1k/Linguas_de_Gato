@@ -218,8 +218,8 @@ describe('database migration v1 → v2', () => {
 
     const raw = await openAppDatabase(factory);
     expect(raw.version).toBe(APP_DB_VERSION);
-    expect([...raw.objectStoreNames].sort()).toEqual(
-      ['dictation', 'listeningExercises', 'media', 'sessions', 'speakingAttempts', 'speakingRecordings', 'speakingTopics', 'transcripts'].sort(),
+    expect([...raw.objectStoreNames]).toEqual(
+      expect.arrayContaining(['dictation', 'media', 'sessions', 'speakingAttempts', 'speakingRecordings', 'speakingTopics', 'transcripts']),
     );
     raw.close();
 

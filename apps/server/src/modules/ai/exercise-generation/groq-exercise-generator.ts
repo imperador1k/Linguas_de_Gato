@@ -2,8 +2,10 @@ import { generationResultSchema, type GenerationRequest, type GenerationResponse
 import { GroqChatClient, type GroqChatOptions } from '../groq-chat.js';
 import type { ExerciseGenerationProvider } from '../providers.js';
 import type { ExerciseGenerator, GeneratorRegistry } from './generator.js';
+import { grammarGenerator } from './grammar-generator.js';
 import { listeningGenerator } from './listening-generator.js';
 import { speakingGenerator } from './speaking-generator.js';
+import { writingGenerator } from './writing-generator.js';
 
 /**
  * Exercise generation over Groq Chat Completions. Dispatches each request to
@@ -16,6 +18,8 @@ import { speakingGenerator } from './speaking-generator.js';
 export const DEFAULT_GENERATORS: GeneratorRegistry = {
   speaking: speakingGenerator,
   listening: listeningGenerator,
+  writing: writingGenerator,
+  grammar: grammarGenerator,
 };
 
 export interface GroqExerciseGeneratorOptions extends GroqChatOptions {
