@@ -90,6 +90,14 @@ export interface AcceptedMediaFile {
   readonly kind: MediaKind;
 }
 
+/**
+ * `audio/webm;codecs=opus` → `audio/webm`. MediaRecorder and some browsers
+ * include codec parameters; only the base type identifies the container.
+ */
+export function baseMimeType(type: string): string {
+  return (type.split(';')[0] ?? '').trim().toLowerCase();
+}
+
 export function getFileExtension(fileName: string): string | null {
   const dot = fileName.lastIndexOf('.');
   if (dot <= 0 || dot === fileName.length - 1) return null;
@@ -144,7 +152,7 @@ export function validateMediaFile(
     });
   }
 
-  const mimeType = file.type.toLowerCase();
+  const mimeType = baseMimeType(file.type);
   if (!GENERIC_MIME_TYPES.includes(mimeType) && !format.mimeTypes.includes(mimeType)) {
     return err({
       reason: 'mime-mismatch',

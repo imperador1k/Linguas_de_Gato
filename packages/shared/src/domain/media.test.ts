@@ -33,6 +33,10 @@ describe('validateMediaFile', () => {
     ['film.webm', 'video/webm', 'video'],
     ['voice.webm', 'audio/webm', 'audio'],
     ['clip.MP4', 'application/octet-stream', 'video'],
+    // Browser recordings report codec parameters (MediaRecorder).
+    ['recording.webm', 'audio/webm;codecs=opus', 'audio'],
+    ['recording.m4a', 'audio/mp4; codecs="mp4a.40.2"', 'audio'],
+    ['recording.ogg', 'audio/ogg;codecs=opus', 'audio'],
   ])('accepts %s (%s) as %s', (name, type, kind) => {
     const result = validateMediaFile({ name, type, size: 3 * MB });
     expect(result.ok).toBe(true);

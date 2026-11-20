@@ -24,6 +24,7 @@ const baseConfig: AppConfig = {
   groqApiKey: SECRET,
   groqBaseUrl: 'https://api.groq.test/openai/v1',
   transcription: { maxUploadBytes: 25 * MB, timeoutMs: 30_000 },
+  assessment: { model: 'openai/gpt-oss-120b', responseFormat: 'auto', reasoningEffort: 'medium', timeoutMs: 30_000 },
 };
 
 // --- Fixtures -------------------------------------------------------------

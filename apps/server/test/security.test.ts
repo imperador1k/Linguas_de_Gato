@@ -18,6 +18,7 @@ const baseConfig: AppConfig = {
   groqApiKey: 'gsk_security_test',
   groqBaseUrl: 'https://api.groq.test/openai/v1',
   transcription: { maxUploadBytes: 1024 * 1024, timeoutMs: 30_000 },
+  assessment: { model: 'openai/gpt-oss-120b', responseFormat: 'auto', reasoningEffort: 'medium', timeoutMs: 30_000 },
 };
 
 let app: FastifyInstance | undefined;

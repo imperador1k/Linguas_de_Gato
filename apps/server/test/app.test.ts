@@ -22,6 +22,7 @@ const baseConfig: AppConfig = {
   groqApiKey: null,
   groqBaseUrl: 'https://api.groq.com/openai/v1',
   transcription: { maxUploadBytes: 25 * 1024 ** 2, timeoutMs: 300_000 },
+  assessment: { model: 'openai/gpt-oss-120b', responseFormat: 'auto', reasoningEffort: 'medium', timeoutMs: 120_000 },
 };
 
 /** The web client's header; state-changing API calls are rejected without it (request guards). */
@@ -86,8 +87,8 @@ describe('GET /api/capabilities', () => {
 
     const body = capabilitiesResponseSchema.parse(response.json());
     expect(body.transcription).toEqual({ available: true, configured: true, provider: 'groq', maxUploadBytes: 10 * 1024 ** 2 });
-    // Feedback is a later milestone: configured, but honestly not available.
-    expect(body.feedback).toMatchObject({ available: false, configured: true });
+    // Speaking feedback (M3) shares the key.
+    expect(body.feedback).toMatchObject({ available: true, configured: true });
     expect(response.body).not.toContain(secret);
   });
 });

@@ -30,6 +30,8 @@ export const capabilitiesResponseSchema = z.object({
     maxUploadBytes: z.number().int().positive(),
   }),
   feedback: aiFeatureSchema,
+  /** AI exercise generation (speaking tasks, listening questions). */
+  exerciseGeneration: aiFeatureSchema,
 });
 
 export type CapabilitiesResponse = z.infer<typeof capabilitiesResponseSchema>;

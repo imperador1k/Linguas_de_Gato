@@ -43,6 +43,28 @@ export const router = createBrowserRouter([
           return { Component: ListeningSessionPage };
         },
       },
+      {
+        path: 'speaking',
+        lazy: async () => {
+          const { SpeakingLabPage } = await import('@/features/speaking/speaking-lab-page');
+          return { Component: SpeakingLabPage };
+        },
+      },
+      {
+        // source: "library" (a curated prompt id) or "custom" (a saved topic id).
+        path: 'speaking/practice/:source/:topicId',
+        lazy: async () => {
+          const { SpeakingPracticePage } = await import('@/features/speaking/speaking-practice-page');
+          return { Component: SpeakingPracticePage };
+        },
+      },
+      {
+        path: 'speaking/attempts/:attemptId',
+        lazy: async () => {
+          const { SpeakingAttemptPage } = await import('@/features/speaking/speaking-attempt-page');
+          return { Component: SpeakingAttemptPage };
+        },
+      },
       ...plannedRoutes,
       { path: '*', Component: NotFoundPage },
     ],

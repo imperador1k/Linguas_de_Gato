@@ -8,6 +8,8 @@ import { createAiProviders, type AiProviderDependencies } from './modules/ai/pro
 import { sweepStaleUploads } from './modules/transcription/temp-uploads.js';
 import { registerErrorHandling } from './plugins/error-handler.js';
 import { registerRequestGuards } from './plugins/request-guards.js';
+import { exerciseRoutes } from './routes/exercises.js';
+import { speakingRoutes } from './routes/speaking.js';
 import { systemRoutes } from './routes/system.js';
 import { transcriptionRoutes } from './routes/transcriptions.js';
 
@@ -88,6 +90,9 @@ export async function buildApp(config: AppConfig, dependencies: AppDependencies 
     timeoutMs: config.transcription.timeoutMs,
     tempRoot,
   });
+  await app.register(speakingRoutes, { prefix: '/api', ai, timeoutMs: config.assessment.timeoutMs });
+  // Same chat model and timeout as feedback: both are one structured chat call.
+  await app.register(exerciseRoutes, { prefix: '/api', ai, timeoutMs: config.assessment.timeoutMs });
 
   if (config.clientDistDir) {
     await app.register(fastifyStatic, {

@@ -35,8 +35,8 @@ Each module has a status: **Available** (implemented), **In progress**, or **Pla
 
 | Module | Purpose | Key capabilities | Status |
 | --- | --- | --- | --- |
-| Listening | Comprehension of authentic audio/video | Media import, custom audio controls, automatic transcription (Groq Whisper), subtitle import, synchronised transcript (files and YouTube), replay line, A-B loop, dictation with word-level feedback, saved sessions; comprehension questions planned | Available |
-| Speaking | Fluency and pronunciation | Microphone recording, Whisper transcription, AI feedback on grammar, naturalness and fluency | Planned |
+| Listening | Comprehension of authentic audio/video | Media import, custom audio controls, automatic transcription (Groq Whisper), subtitle import, synchronised transcript (files and YouTube), replay line, A-B loop, dictation with word-level feedback, AI comprehension exercises grounded in the transcript, saved sessions | Available |
+| Speaking | Deliberate speaking practice with evidence-based feedback | B2/C1 prompt library, custom topics and AI-generated B2/C1/C2 tasks, free and guided modes, microphone recording, Whisper transcription with learner review, AI feedback on grammar, vocabulary, coherence, naturalness and task achievement (every correction quoted from the transcript), deterministic fluency measurements, follow-up exercises, saved attempts; pronunciation scoring planned | Available |
 | Writing | Accuracy and naturalness in long-form output | Essay prompts, correction with explanations, naturalness and register analysis | Planned |
 | Grammar | Targeted B2–C1 structures | Interactive exercises (transformation, gap-fill, error spotting) | Planned |
 | Reading | Comprehension of authentic texts | Text import, comprehension questions, inline vocabulary capture | Planned |
@@ -72,6 +72,22 @@ The Media Importer is shared infrastructure, used first by Listening and later b
 - Subtitle files: up to 5 MB.
 - YouTube input accepts standard watch, short-link, embed, live and Shorts URLs, or a bare 11-character video ID.
 
+### 5.4 Speaking Lab
+
+- **Tasks:** a curated library of 14 prompts (technology, work, culture, education, science, society, everyday situations; one B2 and one C1 each), plus learner-created topics. Guided mode shows points to cover and a suggested structure; free mode leaves the organisation to the learner. Suggested durations: 30, 60, 120 or 180 seconds; recording stops at 180 seconds.
+- **Recording:** the microphone is requested only when the learner presses "Start recording". Pause, resume, finish and cancel; a live input-level meter warns when no sound is detected; the recording can be played back before anything is sent.
+- **Transcription:** an explicit "Transcribe" action sends the recording through the M2 pipeline (English by default).
+- **Review:** the learner corrects words the recogniser misheard, per segment, and is told to keep their own mistakes. Feedback is only requested on the confirmed transcript.
+- **Feedback:** qualitative levels only (Strong / Developing / Needs attention), never scores or CEFR labels. Every correction shows the original words, a correction, an explanation, an optional more natural alternative, and the timestamp; quotes are verified against the transcript and unverifiable claims are withheld. Fluency is reported as deterministic measurements with their limits stated. Pronunciation, accent and intonation are explicitly not assessed.
+- **Exercises:** two to five follow-ups built from the learner's own sentences (correct the error, natural collocation, reformulate, linking, develop the argument), with saved answers and a model answer.
+
+### 5.5 AI exercise generation
+
+Generation happens only when the learner presses a "Generate" button, uses the configured Groq chat model, and every result is validated before it is shown. Generated content is practice material: the level is a target, never presented as an official CEFR assessment. Difficulty comes from the thinking and language a task demands, not from obscure vocabulary (B2: independent communication and varied vocabulary; C1: nuance, precision, complex argument; C2: subtle distinctions, register, idiomatic precision).
+
+- **Speaking tasks** ("Generate with AI" in Your own topics): choose level (B2, C1, C2), category, format (free speaking, guided discussion, debate, critical thinking), suggested duration, an optional language focus and an optional topic or interest. The task has a title, a central prompt, instructions, discussion points, follow-up questions, useful expressions and collocations with meanings and examples, and speaking objectives. **No model answer** is generated, to keep practice spontaneous. The learner previews, regenerates, edits and saves it as a personal topic; curated prompts and hand-written topics are unchanged.
+- **Listening comprehension** (the Comprehension mode of a session with a transcript): choose level, question types (main idea, detail, inference, speaker intention, vocabulary in context) and 4–10 questions. Questions are multiple choice or short answer and use the saved transcript as their only source; each carries an exact evidence quote, which the server checks against the transcript together with its segment references. Unverifiable questions are left out, and the learner is told how many. The transcript is hidden while answering; after "Check answers" each question shows the correct or accepted answers, an explanation and the transcript passage with "Play this part". Short answers are self-assessed. Sets and answers are saved; a set can be answered again or deleted. Dictation is not duplicated here.
+
 ## 6. Legal and ethical constraints
 
 - YouTube content is only *played* through the official IFrame player, in line with the YouTube Terms of Service.
@@ -90,6 +106,11 @@ The Media Importer is shared infrastructure, used first by Listening and later b
 | Generated transcripts (cues, word and segment timings, model and language used) | IndexedDB | Until deleted by the learner |
 | Audio sent for transcription | Server temp file (deleted in `finally`; swept at startup after a crash), then Groq | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | Transcription preferences (language, model) | `localStorage` | Until cleared |
+| Speaking attempts (prompt, transcript as recognised and as corrected, word timings, fluency, feedback, exercise answers) and custom or AI-generated topics | IndexedDB | Until deleted by the learner |
+| Listening exercise sets (generated questions, evidence, answers, results) | IndexedDB | Until the set or its session is deleted (kept, and flagged, if the transcript is replaced) |
+| Text sent for exercise generation (speaking settings and optional interest; or the session's transcript text, never audio) | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
+| Speaking recordings | Browser memory; IndexedDB only if the learner ticks "Keep this recording" | Page lifetime by default; otherwise until the learner deletes the recording or the attempt |
+| Transcript sent for speaking feedback | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | API keys | Server environment only | Never sent to the browser |
 
 Data export and import (JSON) is planned for a later milestone (see ROADMAP.md).

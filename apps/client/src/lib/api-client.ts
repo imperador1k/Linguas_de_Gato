@@ -47,6 +47,35 @@ export async function apiGet<T>(path: `/api/${string}`, schema: ZodType<T>, sign
   return parsed.data;
 }
 
+/** Typed JSON POST. Sends the client header the server's CSRF guard requires. */
+export async function apiPost<T>(path: `/api/${string}`, payload: unknown, schema: ZodType<T>, signal?: AbortSignal): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(path, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json', [CLIENT_HEADER]: CLIENT_HEADER_VALUE },
+      body: JSON.stringify(payload),
+      ...(signal ? { signal } : {}),
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') throw error;
+    throw new ApiError('NETWORK_ERROR', 'Could not reach the local server.', 0);
+  }
+
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok) {
+    const parsed = apiErrorResponseSchema.safeParse(body);
+    if (parsed.success) {
+      const { code, message, details } = parsed.data.error;
+      throw new ApiError(code, message, response.status, details);
+    }
+    throw new ApiError('INTERNAL_ERROR', `The server responded with status ${response.status}.`, response.status);
+  }
+  const parsed = schema.safeParse(body);
+  if (!parsed.success) throw new ApiError('INVALID_RESPONSE', 'The server sent an unexpected response.', response.status);
+  return parsed.data;
+}
+
 export interface UploadCallbacks {
   readonly signal?: AbortSignal;
   /** Real byte counts from the browser; not called when the total is unknown. */

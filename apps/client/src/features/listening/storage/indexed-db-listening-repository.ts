@@ -1,35 +1,57 @@
 import {
   dictationRecordSchema,
+  listeningExerciseSetSchema,
   listeningSessionSchema,
   transcriptRecordSchema,
   type DictationRecord,
+  type ListeningExerciseSet,
   type ListeningSession,
   type TranscriptRecord,
 } from '@ldg/shared';
-import type { z } from 'zod';
-import { openDatabase, requestToPromise, StorageError, transactionDone } from '@/lib/storage/indexed-db';
+import {
+  APP_DB_NAME,
+  APP_DB_VERSION,
+  STORES as APP_STORES,
+  LISTENING_EXERCISES_BY_SESSION,
+  openAppDatabase,
+} from '@/lib/storage/app-database';
+import {
+  parseStoredRecord as parseOrNull,
+  requestToPromise,
+  runInTransaction,
+  StorageError,
+  transactionDone,
+} from '@/lib/storage/indexed-db';
 import {
   sortByLastOpened,
+  sortSetsNewestFirst,
   toTranscriptRecord,
   withMediaStored,
   type ListeningRepository,
   type TranscriptContent,
 } from './listening-repository';
 
-export const LISTENING_DB_NAME = 'linguas-de-gato';
-export const LISTENING_DB_VERSION = 1;
+/** The shared app database (see lib/storage/app-database.ts for versions and migrations). */
+export const LISTENING_DB_NAME = APP_DB_NAME;
+export const LISTENING_DB_VERSION = APP_DB_VERSION;
 
 /**
- * Stores (schema v1):
+ * Listening stores:
  * - sessions     keyPath id                    small metadata, listed often
  * - transcripts  keyPath sessionId             cues (+ provider segments/words since M2), loaded per session
  * - media        keyPath sessionId             optional opt-in copy of a local file
  * - dictation    keyPath [sessionId, cueId]    attempts per transcript line
+ * - listeningExercises keyPath id, index bySession   AI-generated question sets and answers (v3)
  *
- * Large payloads live outside `sessions` so listing stays cheap. M2 only
- * added optional fields to records, so the schema version is unchanged.
+ * Large payloads live outside `sessions` so listing stays cheap.
  */
-const STORES = { sessions: 'sessions', transcripts: 'transcripts', media: 'media', dictation: 'dictation' } as const;
+const STORES = {
+  sessions: APP_STORES.sessions,
+  transcripts: APP_STORES.transcripts,
+  media: APP_STORES.media,
+  dictation: APP_STORES.dictation,
+  exercises: APP_STORES.listeningExercises,
+} as const;
 const ALL_STORES = Object.values(STORES);
 
 interface MediaRecord {
@@ -37,51 +59,9 @@ interface MediaRecord {
   readonly blob: Blob;
 }
 
-function upgrade(database: IDBDatabase, oldVersion: number): void {
-  // Each step migrates from the previous version; never edit a released step.
-  if (oldVersion < 1) {
-    database.createObjectStore(STORES.sessions, { keyPath: 'id' });
-    database.createObjectStore(STORES.transcripts, { keyPath: 'sessionId' });
-    database.createObjectStore(STORES.media, { keyPath: 'sessionId' });
-    database.createObjectStore(STORES.dictation, { keyPath: ['sessionId', 'cueId'] });
-  }
-}
-
 /** All dictation keys of one session: arrays sort after strings, so [id, []] bounds every cueId. */
 function sessionDictationRange(sessionId: string): IDBKeyRange {
   return IDBKeyRange.bound([sessionId], [sessionId, []]);
-}
-
-function parseOrNull<S extends z.ZodType>(schema: S, value: unknown, label: string): z.infer<S> | null {
-  if (value === undefined) return null;
-  const result = schema.safeParse(value);
-  if (!result.success) {
-    console.warn(`Skipping an unreadable ${label} record in browser storage.`, result.error.issues);
-    return null;
-  }
-  return result.data;
-}
-
-/**
- * Runs `work` inside `transaction` and resolves once the transaction commits.
- * If `work` throws, the transaction is aborted so no partial write survives.
- */
-async function runInTransaction<T>(transaction: IDBTransaction, work: () => Promise<T>): Promise<T> {
-  const done = transactionDone(transaction);
-  let result: T;
-  try {
-    result = await work();
-  } catch (error) {
-    done.catch(() => undefined);
-    try {
-      transaction.abort();
-    } catch {
-      // Already finished; nothing to roll back.
-    }
-    throw error;
-  }
-  await done;
-  return result;
 }
 
 export class IndexedDbListeningRepository implements ListeningRepository {
@@ -90,8 +70,7 @@ export class IndexedDbListeningRepository implements ListeningRepository {
   private constructor(private readonly database: IDBDatabase) {}
 
   static async open(factory?: IDBFactory): Promise<IndexedDbListeningRepository> {
-    const database = await openDatabase({ name: LISTENING_DB_NAME, version: LISTENING_DB_VERSION, upgrade, factory });
-    return new IndexedDbListeningRepository(database);
+    return new IndexedDbListeningRepository(await openAppDatabase(factory));
   }
 
   close(): void {
@@ -154,6 +133,11 @@ export class IndexedDbListeningRepository implements ListeningRepository {
     transaction.objectStore(STORES.transcripts).delete(id);
     transaction.objectStore(STORES.media).delete(id);
     transaction.objectStore(STORES.dictation).delete(sessionDictationRange(id));
+    const exercises = transaction.objectStore(STORES.exercises);
+    const keys = exercises.index(LISTENING_EXERCISES_BY_SESSION).getAllKeys(id);
+    keys.onsuccess = () => {
+      for (const key of keys.result) exercises.delete(key);
+    };
     await transactionDone(transaction);
   }
 
@@ -220,6 +204,37 @@ export class IndexedDbListeningRepository implements ListeningRepository {
   async putDictation(record: DictationRecord): Promise<void> {
     const transaction = this.transaction(STORES.dictation, 'readwrite');
     transaction.objectStore(STORES.dictation).put(dictationRecordSchema.parse(record));
+    await transactionDone(transaction);
+  }
+
+  async listExerciseSets(sessionId: string): Promise<ListeningExerciseSet[]> {
+    const transaction = this.transaction(STORES.exercises, 'readonly');
+    const rows = await requestToPromise(
+      transaction.objectStore(STORES.exercises).index(LISTENING_EXERCISES_BY_SESSION).getAll(sessionId),
+    );
+    return sortSetsNewestFirst(
+      rows
+        .map((row: unknown) => parseOrNull(listeningExerciseSetSchema, row, 'listening exercise set'))
+        .filter((set): set is ListeningExerciseSet => set !== null),
+    );
+  }
+
+  async getExerciseSet(id: string): Promise<ListeningExerciseSet | null> {
+    const transaction = this.transaction(STORES.exercises, 'readonly');
+    const row: unknown = await requestToPromise(transaction.objectStore(STORES.exercises).get(id));
+    return parseOrNull(listeningExerciseSetSchema, row, 'listening exercise set');
+  }
+
+  async putExerciseSet(set: ListeningExerciseSet): Promise<void> {
+    const row = listeningExerciseSetSchema.parse(set);
+    const transaction = this.transaction(STORES.exercises, 'readwrite');
+    transaction.objectStore(STORES.exercises).put(row);
+    await transactionDone(transaction);
+  }
+
+  async deleteExerciseSet(id: string): Promise<void> {
+    const transaction = this.transaction(STORES.exercises, 'readwrite');
+    transaction.objectStore(STORES.exercises).delete(id);
     await transactionDone(transaction);
   }
 }

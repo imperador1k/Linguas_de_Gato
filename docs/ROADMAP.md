@@ -37,11 +37,26 @@ Milestones are ordered by learning value and technical dependency. Each one ends
 
 Files above the upload limit are rejected with a clear message. Automatic splitting of long audio (chunking with overlap, then stitching the timestamps) is deferred, because it needs audio decoding (FFmpeg or WebCodecs) that this milestone intentionally avoids.
 
-## M3 — Speaking
+## M3 — Speaking Lab ✅
 
-- Microphone recording (MediaRecorder), level meter, playback.
-- Transcription through M2 and AI feedback on grammar, naturalness and fluency.
-- Record recurring mistakes.
+- Curated prompt library (14 tasks, B2 and C1 in seven categories), custom topics, free and guided modes, suggested durations of 30/60/120/180 s.
+- Microphone recording with MediaRecorder: explicit permission on "Start recording", MIME negotiation, pause/resume/finish/cancel, live level meter, 180 s maximum, playback, clear permission-denied and unsupported-browser states, guarded navigation, resource cleanup.
+- Transcription through the M2 pipeline (unchanged), then a transcript review where the learner corrects recognition errors per segment, with play-from-timestamp.
+- Speaking feedback via Groq Chat Completions (`openai/gpt-oss-120b` by default, strict Structured Outputs): grammar, vocabulary, coherence, naturalness and task achievement with qualitative levels; every correction quotes the transcript and is verified on the server; deterministic fluency measurements (rate, pauses, repetitions, possible fillers) kept separate.
+- Follow-up exercises built from the learner's own sentences, with saved answers.
+- Attempts saved in IndexedDB (schema v2, M1/M2 data preserved); recordings opt-in and deletable.
+
+### AI exercise generation ✅ (with M3)
+
+- Shared generation service (`POST /api/exercises/generate`, one generator per module, strict schemas, evidence verification where facts are involved), using the configured chat model.
+- Speaking: generate B2/C1/C2 tasks (free, guided, debate, critical thinking) with discussion points, follow-ups, useful language and objectives; preview, regenerate, edit, save. No model answers.
+- Listening: comprehension questions (main idea, detail, inference, speaker intention, vocabulary in context; multiple choice and short answer) grounded in the saved transcript; answer first, then results with explanations and the evidence passage.
+- Database v3 (`listeningExercises`). Writing, Grammar, Reading and Vocabulary will add their own generators when those modules are built.
+
+### Later: speaking
+
+- Pronunciation and prosody feedback needs dedicated audio analysis (phoneme alignment), not a transcript; deferred.
+- A view of recurring mistakes across attempts belongs with Progress (M7).
 
 ## M4 — Writing
 

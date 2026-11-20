@@ -45,7 +45,7 @@ export const MODULES: readonly LearningModule[] = [
     milestone: 'M2',
     summary:
       'Work through authentic audio and video at your own pace: transcribe it automatically, follow the transcript, loop hard passages and test yourself with dictation.',
-    highlights: ['Automatic transcription', 'Local files and YouTube', 'Replay line and A-B loops', 'Dictation with word-level feedback'],
+    highlights: ['Automatic transcription', 'Local files and YouTube', 'Replay line and A-B loops', 'Dictation with word-level feedback', 'Comprehension exercises from the transcript'],
   },
   {
     id: 'speaking',
@@ -53,10 +53,10 @@ export const MODULES: readonly LearningModule[] = [
     path: '/speaking',
     icon: Mic,
     group: 'practice',
-    status: 'planned',
+    status: 'available',
     milestone: 'M3',
-    summary: 'Record yourself, see an accurate transcript, and get feedback on grammar, naturalness and fluency.',
-    highlights: ['Microphone recording', 'Whisper transcription', 'Feedback on naturalness'],
+    summary: 'Answer a question out loud, check the transcript, and get evidence-based feedback with exercises built from your mistakes.',
+    highlights: ['B2 and C1 speaking tasks', 'AI-generated tasks up to C2', 'Reviewed Whisper transcript', 'Feedback tied to your own words', 'Fluency measurements'],
   },
   {
     id: 'writing',

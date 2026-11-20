@@ -1,6 +1,7 @@
 import {
   appendDictationAttempt,
   clamp,
+  cueIndexForSegmentId,
   findActiveCueIndex,
   findReplayCueIndex,
   parseSubtitles,
@@ -9,18 +10,24 @@ import {
   summarizeLine,
   validateSubtitleFile,
   type LineProgress,
+  type ListeningQuestion,
   type SubtitleCue,
   type TextComparison,
   type TimeRange,
   type TranscriptSummary,
 } from '@ldg/shared';
-import { BookOpenText, CircleCheck, PencilLine, TriangleAlert } from 'lucide-react';
+import { BookOpenText, CircleCheck, ListChecks, PencilLine, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { cn } from '@/lib/utils';
+import { useCapabilities } from '@/hooks/use-capabilities';
 import { DictationLineList } from '../dictation/dictation-line-list';
+import { ExerciseSetGenerator } from '../exercises/exercise-set-generator';
+import { ExerciseSetList } from '../exercises/exercise-set-list';
+import { ExerciseSetView } from '../exercises/exercise-set-view';
+import { useExerciseMode } from '../exercises/use-exercise-mode';
 import { DictationPanel } from '../dictation/dictation-panel';
 import type { Playback } from '../playback/playback';
 import { useBoundedPlayback, type BoundedPlaybackApi } from '../playback/use-bounded-playback';
@@ -31,7 +38,8 @@ import { TranscriptPanel } from '../transcript-panel';
 import { describeTranscriptSource } from '../transcription/transcribed-session';
 import type { ListeningSessionApi, LoadedSession } from './use-listening-session';
 
-type Mode = 'read' | 'dictation';
+type Mode = 'read' | 'dictation' | 'exercises';
+const MODES: readonly Mode[] = ['read', 'dictation', 'exercises'];
 
 export interface TranscriptChange {
   readonly content: TranscriptContent | null;
@@ -46,26 +54,27 @@ export interface WorkspaceTools {
 
 const SAVE_INTERVAL_MS = 5000;
 
-function ModeSwitch({ mode, dictationAvailable, onChange }: { mode: Mode; dictationAvailable: boolean; onChange: (mode: Mode) => void }) {
-  const options: Array<{ value: Mode; label: string; icon: typeof BookOpenText }> = [
-    { value: 'read', label: 'Read along', icon: BookOpenText },
-    { value: 'dictation', label: 'Dictation', icon: PencilLine },
+function ModeSwitch({ mode, transcriptAvailable, onChange }: { mode: Mode; transcriptAvailable: boolean; onChange: (mode: Mode) => void }) {
+  const options: Array<{ value: Mode; label: string; icon: typeof BookOpenText; needs: string }> = [
+    { value: 'read', label: 'Read along', icon: BookOpenText, needs: '' },
+    { value: 'dictation', label: 'Dictation', icon: PencilLine, needs: 'Add a transcript to practise dictation' },
+    { value: 'exercises', label: 'Comprehension', icon: ListChecks, needs: 'Add a transcript to generate comprehension exercises' },
   ];
   return (
-    <div role="group" aria-label="Practice mode" className="inline-flex rounded-lg border bg-card p-1">
-      {options.map(({ value, label, icon: Icon }) => {
+    <div role="group" aria-label="Practice mode" className="inline-flex max-w-full rounded-lg border bg-card p-1">
+      {options.map(({ value, label, icon: Icon, needs }) => {
         const selected = mode === value;
-        const disabled = value === 'dictation' && !dictationAvailable;
+        const disabled = value !== 'read' && !transcriptAvailable;
         return (
           <button
             key={value}
             type="button"
             aria-pressed={selected}
             disabled={disabled}
-            title={disabled ? 'Add a transcript to practise dictation' : undefined}
+            title={disabled ? needs : undefined}
             onClick={() => onChange(value)}
             className={cn(
-              'inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition-colors duration-150 disabled:opacity-50',
+              'inline-flex h-9 min-w-0 items-center gap-2 rounded-md px-2.5 text-sm transition-colors duration-150 disabled:opacity-50 sm:px-3',
               selected ? 'bg-primary font-medium text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -148,7 +157,11 @@ export function PracticeWorkspace({
   const [pendingChange, setPendingChange] = useState<TranscriptChange | null>(null);
 
   const hasCues = cues !== null && cues.length > 0;
-  const mode: Mode = searchParams.get('mode') === 'dictation' && hasCues ? 'dictation' : 'read';
+  const requestedMode = searchParams.get('mode');
+  const mode: Mode = hasCues && MODES.includes(requestedMode as Mode) ? (requestedMode as Mode) : 'read';
+  const capabilities = useCapabilities();
+  const generationAvailable = capabilities.status === 'ready' && capabilities.data.exerciseGeneration.available;
+  const exerciseMode = useExerciseMode(session.id, cues);
   const lineParam = Number.parseInt(searchParams.get('line') ?? '1', 10);
   const selectedIndex = hasCues ? clamp(Number.isFinite(lineParam) ? lineParam - 1 : 0, 0, cues.length - 1) : 0;
   const durationMs = state.duration > 0 ? state.duration * 1000 : undefined;
@@ -191,6 +204,16 @@ export function PracticeWorkspace({
       practice.playSegment(range, index);
     },
     [cues, durationMs, practice, replayTarget],
+  );
+
+  /** Plays the passage a comprehension question quotes (timestamps come from the verified evidence). */
+  const playEvidence = useCallback(
+    (question: ListeningQuestion) => {
+      const cueIndex = cueIndexForSegmentId(question.segmentIds[0] ?? '') ?? 0;
+      const range = segmentPlaybackRange({ startMs: question.startMs, endMs: question.endMs ?? question.startMs + 8000 }, { durationMs });
+      practice.playSegment(range, cueIndex);
+    },
+    [durationMs, practice],
   );
 
   const replayLine = useCallback(() => {
@@ -354,7 +377,7 @@ export function PracticeWorkspace({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <ModeSwitch
           mode={mode}
-          dictationAvailable={hasCues}
+          transcriptAvailable={hasCues}
           onChange={(next) => {
             // A one-off line replay belongs to the old view; A-B and line loops are kept.
             if (practice.bounded?.mode === 'segment') practice.clear();
@@ -395,10 +418,48 @@ export function PracticeWorkspace({
               onSubmit={(answer, comparison) => submitAttempt(selectedCue, answer, comparison)}
             />
           ) : null}
+          {mode === 'exercises' && cues ? (
+            <>
+              {exerciseMode.error ? (
+                <Notice tone="error" role="alert">
+                  {exerciseMode.error}
+                </Notice>
+              ) : null}
+              {!exerciseMode.loaded ? null : exerciseMode.active ? (
+                <ExerciseSetView
+                  key={exerciseMode.active.id}
+                  set={exerciseMode.active}
+                  stale={exerciseMode.isStale(exerciseMode.active.transcriptFingerprint)}
+                  canPlay={state.ready}
+                  onChange={(update) => exerciseMode.active && exerciseMode.update(exerciseMode.active.id, update)}
+                  onPlay={playEvidence}
+                />
+              ) : (
+                <ExerciseSetGenerator
+                  sessionId={session.id}
+                  cues={cues}
+                  available={generationAvailable}
+                  onCreated={(set) => {
+                    void exerciseMode.add(set);
+                    exerciseMode.select(set.id);
+                  }}
+                  onCancel={exerciseMode.sets && exerciseMode.sets.length > 0 ? () => exerciseMode.select(exerciseMode.sets?.[0]?.id ?? null) : undefined}
+                />
+              )}
+            </>
+          ) : null}
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
-          {mode === 'dictation' && cues ? (
+          {mode === 'exercises' && cues ? (
+            <ExerciseSetList
+              sets={exerciseMode.sets ?? []}
+              activeId={exerciseMode.activeId}
+              onSelect={(id) => exerciseMode.select(id)}
+              onNew={() => exerciseMode.select(null)}
+              onDelete={(id) => void exerciseMode.remove(id)}
+            />
+          ) : mode === 'dictation' && cues ? (
             <DictationLineList
               cues={cues}
               progress={progress}

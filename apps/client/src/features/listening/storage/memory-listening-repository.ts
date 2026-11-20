@@ -1,6 +1,13 @@
-import type { DictationRecord, ListeningSession, TranscriptRecord } from '@ldg/shared';
+import {
+  listeningExerciseSetSchema,
+  type DictationRecord,
+  type ListeningExerciseSet,
+  type ListeningSession,
+  type TranscriptRecord,
+} from '@ldg/shared';
 import {
   sortByLastOpened,
+  sortSetsNewestFirst,
   toTranscriptRecord,
   withMediaStored,
   type ListeningRepository,
@@ -18,6 +25,7 @@ export class MemoryListeningRepository implements ListeningRepository {
   private readonly transcripts = new Map<string, TranscriptRecord>();
   private readonly media = new Map<string, Blob>();
   private readonly dictation = new Map<string, DictationRecord>();
+  private readonly exerciseSets = new Map<string, ListeningExerciseSet>();
 
   async listSessions(): Promise<ListeningSession[]> {
     return sortByLastOpened([...this.sessions.values()].map((session) => structuredClone(session)));
@@ -50,6 +58,9 @@ export class MemoryListeningRepository implements ListeningRepository {
     this.transcripts.delete(id);
     this.media.delete(id);
     this.clearDictation(id);
+    for (const [key, set] of this.exerciseSets) {
+      if (set.sessionId === id) this.exerciseSets.delete(key);
+    }
   }
 
   async getTranscript(sessionId: string): Promise<TranscriptRecord | null> {
@@ -97,6 +108,25 @@ export class MemoryListeningRepository implements ListeningRepository {
 
   async putDictation(record: DictationRecord): Promise<void> {
     this.dictation.set(JSON.stringify([record.sessionId, record.cueId]), structuredClone(record));
+  }
+
+  async listExerciseSets(sessionId: string): Promise<ListeningExerciseSet[]> {
+    return sortSetsNewestFirst(
+      [...this.exerciseSets.values()].filter((set) => set.sessionId === sessionId).map((set) => structuredClone(set)),
+    );
+  }
+
+  async getExerciseSet(id: string): Promise<ListeningExerciseSet | null> {
+    const set = this.exerciseSets.get(id);
+    return set ? structuredClone(set) : null;
+  }
+
+  async putExerciseSet(set: ListeningExerciseSet): Promise<void> {
+    this.exerciseSets.set(set.id, structuredClone(listeningExerciseSetSchema.parse(set)));
+  }
+
+  async deleteExerciseSet(id: string): Promise<void> {
+    this.exerciseSets.delete(id);
   }
 
   private clearDictation(sessionId: string): void {

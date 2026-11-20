@@ -8,7 +8,10 @@ import {
 } from '@ldg/shared';
 import { z } from 'zod';
 import { AppError } from '../../errors.js';
+import { abortOr, errorFromGroqResponse, type GroqErrorMessages } from './groq-http.js';
 import type { TranscriptionProvider, TranscriptionRequest } from './providers.js';
+
+export { safeProviderDetail } from './groq-http.js';
 
 /**
  * Groq speech-to-text over its OpenAI-compatible REST endpoint
@@ -43,11 +46,11 @@ export const groqVerboseTranscriptionSchema = z.object({
 });
 export type GroqVerboseTranscription = z.infer<typeof groqVerboseTranscriptionSchema>;
 
-const groqErrorSchema = z.object({ error: z.object({ message: z.string().optional() }).passthrough() }).passthrough();
-
-const MAX_PROVIDER_DETAIL_LENGTH = 200;
-/** Groq keys start with `gsk_`; never echo anything that looks like one. */
-const KEY_LIKE = /gsk_[A-Za-z0-9]+/g;
+const MESSAGES: GroqErrorMessages = {
+  badRequest: "Groq couldn't process this file. It may be damaged, too short, or contain no audio track.",
+  tooLarge: 'Groq rejected the file as too large for your plan.',
+};
+const TIMEOUT_MESSAGE = 'Transcription took too long and was stopped. Try a shorter file.';
 
 function toMs(seconds: number): number | null {
   return Number.isFinite(seconds) ? Math.max(0, Math.round(seconds * 1000)) : null;
@@ -106,69 +109,6 @@ export function normalizeGroqTranscription(
   });
 }
 
-function retryAfterSeconds(response: Response): number | null {
-  const header = response.headers.get('retry-after');
-  if (!header) return null;
-  const seconds = Number(header);
-  if (Number.isFinite(seconds) && seconds >= 0) return Math.ceil(seconds);
-  const date = Date.parse(header);
-  return Number.isNaN(date) ? null : Math.max(0, Math.ceil((date - Date.now()) / 1000));
-}
-
-/** The provider's own error message, shortened and with anything key-like removed. */
-export function safeProviderDetail(message: string | undefined, apiKey: string): string | undefined {
-  if (!message) return undefined;
-  const redacted = message.split(apiKey).join('[redacted]').replace(KEY_LIKE, '[redacted]');
-  return redacted.slice(0, MAX_PROVIDER_DETAIL_LENGTH);
-}
-
-async function providerDetail(response: Response, apiKey: string): Promise<string | undefined> {
-  const body: unknown = await response.json().catch(() => undefined);
-  const parsed = groqErrorSchema.safeParse(body);
-  return safeProviderDetail(parsed.success ? parsed.data.error.message : undefined, apiKey);
-}
-
-/** Maps an HTTP failure to an error that is safe and useful to show the learner. */
-async function errorFromResponse(response: Response, apiKey: string): Promise<AppError> {
-  const detail = await providerDetail(response, apiKey);
-  const details = detail ? [{ path: 'provider', message: detail }] : undefined;
-
-  switch (response.status) {
-    case 400:
-    case 422:
-      return new AppError(
-        'PROVIDER_ERROR',
-        "Groq couldn't process this file. It may be damaged, too short, or contain no audio track.",
-        502,
-        details,
-      );
-    case 401:
-    case 403:
-      return new AppError('PROVIDER_UNAVAILABLE', 'Groq rejected the API key. Check GROQ_API_KEY in apps/server/.env.', 503);
-    case 413:
-      return new AppError('PAYLOAD_TOO_LARGE', 'Groq rejected the file as too large for your plan.', 413, details);
-    case 429: {
-      const wait = retryAfterSeconds(response);
-      return new AppError(
-        'RATE_LIMITED',
-        wait === null
-          ? "Groq's rate limit was reached. Wait a moment and try again."
-          : `Groq's rate limit was reached. Try again in about ${wait} seconds.`,
-        429,
-      );
-    }
-    default:
-      if (response.status >= 500) {
-        return new AppError('PROVIDER_ERROR', 'Groq is having problems right now. Try again in a moment.', 502);
-      }
-      return new AppError('PROVIDER_ERROR', `Groq returned an unexpected error (HTTP ${response.status}).`, 502, details);
-  }
-}
-
-function isTimeout(reason: unknown): boolean {
-  return reason instanceof DOMException && reason.name === 'TimeoutError';
-}
-
 export interface GroqTranscriptionOptions {
   readonly apiKey: string;
   readonly baseUrl: string;
@@ -211,16 +151,16 @@ export class GroqTranscriptionProvider implements TranscriptionProvider {
         signal,
       });
     } catch {
-      throw this.#abortOr(signal, () => new AppError('PROVIDER_UNAVAILABLE', "Couldn't reach Groq. Check your internet connection.", 503));
+      throw abortOr(signal, TIMEOUT_MESSAGE, () => new AppError('PROVIDER_UNAVAILABLE', "Couldn't reach Groq. Check your internet connection.", 503));
     }
 
-    if (!response.ok) throw await errorFromResponse(response, this.#apiKey);
+    if (!response.ok) throw await errorFromGroqResponse(response, this.#apiKey, MESSAGES);
 
     let body: unknown;
     try {
       body = await response.json();
     } catch {
-      throw this.#abortOr(signal, () => new AppError('PROVIDER_ERROR', 'Groq returned a response that is not valid JSON.', 502));
+      throw abortOr(signal, TIMEOUT_MESSAGE, () => new AppError('PROVIDER_ERROR', 'Groq returned a response that is not valid JSON.', 502));
     }
 
     const parsed = groqVerboseTranscriptionSchema.safeParse(body);
@@ -232,14 +172,5 @@ export class GroqTranscriptionProvider implements TranscriptionProvider {
     } catch {
       throw new AppError('PROVIDER_ERROR', 'Groq returned a transcript in an unexpected format.', 502);
     }
-  }
-
-  /** A timeout becomes a 504; any other abort (the learner cancelled) propagates unchanged. */
-  #abortOr(signal: AbortSignal, fallback: () => AppError): unknown {
-    if (!signal.aborted) return fallback();
-    if (isTimeout(signal.reason)) {
-      return new AppError('PROVIDER_TIMEOUT', 'Transcription took too long and was stopped. Try a shorter file.', 504);
-    }
-    return signal.reason;
   }
 }

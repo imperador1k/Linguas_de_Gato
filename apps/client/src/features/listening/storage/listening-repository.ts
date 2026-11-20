@@ -1,5 +1,6 @@
 import type {
   DictationRecord,
+  ListeningExerciseSet,
   ListeningSession,
   SubtitleCue,
   TimedWord,
@@ -53,6 +54,20 @@ export interface ListeningRepository {
 
   listDictation(sessionId: string): Promise<DictationRecord[]>;
   putDictation(record: DictationRecord): Promise<void>;
+
+  /**
+   * AI-generated exercise sets of a session, newest first. They survive a
+   * transcript replacement (with the learner's answers) and are flagged as
+   * based on an earlier transcript through their fingerprint.
+   */
+  listExerciseSets(sessionId: string): Promise<ListeningExerciseSet[]>;
+  getExerciseSet(id: string): Promise<ListeningExerciseSet | null>;
+  putExerciseSet(set: ListeningExerciseSet): Promise<void>;
+  deleteExerciseSet(id: string): Promise<void>;
+}
+
+export function sortSetsNewestFirst(sets: ListeningExerciseSet[]): ListeningExerciseSet[] {
+  return sets.sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export function toTranscriptRecord(sessionId: string, transcript: TranscriptContent): TranscriptRecord {

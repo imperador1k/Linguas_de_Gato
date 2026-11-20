@@ -1,5 +1,15 @@
-import type { AiProviderId, TranscriptionModel, TranscriptionResult } from '@ldg/shared';
+import type {
+  AiProviderId,
+  AssessmentRequest,
+  AssessmentResponse,
+  GenerationRequest,
+  GenerationResponse,
+  TranscriptionModel,
+  TranscriptionResult,
+} from '@ldg/shared';
 import type { AppConfig } from '../../config/env.js';
+import { GroqExerciseGenerator } from './exercise-generation/groq-exercise-generator.js';
+import { GroqAssessmentProvider } from './groq-assessment.js';
 import { GroqTranscriptionProvider } from './groq-transcription.js';
 
 /**
@@ -28,11 +38,33 @@ export interface TranscriptionProvider {
   transcribe(request: TranscriptionRequest, signal: AbortSignal): Promise<TranscriptionResult>;
 }
 
+export interface SpeakingAssessmentProvider {
+  readonly id: AiProviderId;
+  readonly model: string;
+  /**
+   * Returns evidence-verified feedback. Same rejection contract as
+   * `TranscriptionProvider.transcribe`.
+   */
+  assess(request: AssessmentRequest, signal: AbortSignal): Promise<AssessmentResponse>;
+}
+
+export interface ExerciseGenerationProvider {
+  readonly id: AiProviderId;
+  readonly model: string;
+  /**
+   * Returns validated (and, where the module requires it, evidence-verified)
+   * exercises. Same rejection contract as `TranscriptionProvider.transcribe`.
+   */
+  generate(request: GenerationRequest, signal: AbortSignal): Promise<GenerationResponse>;
+}
+
 export interface AiProviders {
   /** Which vendor has credentials configured, regardless of feature support. */
   readonly configuredProvider: AiProviderId | null;
   /** Null when no provider is configured. */
   readonly transcription: TranscriptionProvider | null;
+  readonly assessment: SpeakingAssessmentProvider | null;
+  readonly generation: ExerciseGenerationProvider | null;
 }
 
 export interface AiProviderDependencies {
@@ -41,10 +73,19 @@ export interface AiProviderDependencies {
 }
 
 export function createAiProviders(
-  config: Pick<AppConfig, 'groqApiKey' | 'groqBaseUrl' | 'transcription'>,
+  config: Pick<AppConfig, 'groqApiKey' | 'groqBaseUrl' | 'transcription' | 'assessment'>,
   dependencies: AiProviderDependencies = {},
 ): AiProviders {
-  if (!config.groqApiKey) return { configuredProvider: null, transcription: null };
+  if (!config.groqApiKey) return { configuredProvider: null, transcription: null, assessment: null, generation: null };
+  const fetchImpl = dependencies.fetch ?? globalThis.fetch;
+  const chat = {
+    apiKey: config.groqApiKey,
+    baseUrl: config.groqBaseUrl,
+    model: config.assessment.model,
+    responseFormat: config.assessment.responseFormat,
+    reasoningEffort: config.assessment.reasoningEffort,
+    fetch: fetchImpl,
+  };
 
   return {
     configuredProvider: 'groq',
@@ -52,7 +93,10 @@ export function createAiProviders(
       apiKey: config.groqApiKey,
       baseUrl: config.groqBaseUrl,
       maxUploadBytes: config.transcription.maxUploadBytes,
-      fetch: dependencies.fetch ?? globalThis.fetch,
+      fetch: fetchImpl,
     }),
+    assessment: new GroqAssessmentProvider(chat),
+    // Same chat model and settings as feedback: one GROQ_CHAT_MODEL to manage.
+    generation: new GroqExerciseGenerator(chat),
   };
 }

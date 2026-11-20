@@ -1,3 +1,5 @@
+import type { ZodType, z } from 'zod';
+
 /**
  * Minimal promise helpers over the native IndexedDB API. We deliberately avoid
  * a wrapper library: the surface we need is small, and owning it lets us map
@@ -63,6 +65,39 @@ export function transactionDone(transaction: IDBTransaction): Promise<void> {
     transaction.onerror = () => reject(toStorageError(transaction.error));
     transaction.onabort = () => reject(toStorageError(transaction.error ?? new DOMException('Aborted', 'AbortError')));
   });
+}
+
+/**
+ * Runs `work` inside `transaction` and resolves once the transaction commits.
+ * If `work` throws, the transaction is aborted so no partial write survives.
+ */
+export async function runInTransaction<T>(transaction: IDBTransaction, work: () => Promise<T>): Promise<T> {
+  const done = transactionDone(transaction);
+  let result: T;
+  try {
+    result = await work();
+  } catch (error) {
+    done.catch(() => undefined);
+    try {
+      transaction.abort();
+    } catch {
+      // Already finished; nothing to roll back.
+    }
+    throw error;
+  }
+  await done;
+  return result;
+}
+
+/** Validates a stored record; a corrupt or outdated one is skipped (null) instead of crashing the UI. */
+export function parseStoredRecord<S extends ZodType>(schema: S, value: unknown, label: string): z.infer<S> | null {
+  if (value === undefined) return null;
+  const result = schema.safeParse(value);
+  if (!result.success) {
+    console.warn(`Skipping an unreadable ${label} record in browser storage.`, result.error.issues);
+    return null;
+  }
+  return result.data;
 }
 
 export interface OpenDatabaseOptions {
