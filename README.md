@@ -8,7 +8,7 @@ A personal, local-first workspace for deliberate language practice. English come
 - **Grammar** (available): AI-generated exercises on 12 advanced areas in six question types, checked against a verified answer key, with rules, explanations of every option, retries and your result history.
 - **Reading** (available): AI-generated texts for your level or your own pasted texts, in a comfortable reading view with saved progress; select any word or phrase to look it up in context, and check your understanding with questions grounded in the text.
 - **Vocabulary** (available): a personal dictionary of the expressions you save, each kept with the sentence you met it in and its meaning there; a simple review schedule and practice built from your own words.
-- **Progress**: planned (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+- **Progress** (available): what you have practised in each module over a chosen period, with every figure defined and its sample size shown; recurring mistakes gathered across modules with the examples behind them; recommendations you can mark done or dismiss; targeted practice generated from your own mistakes; and a full backup and restore of your data. No points, streaks or invented scores.
 
 ## Requirements
 
@@ -69,4 +69,6 @@ There are no accounts, no server database and no analytics. Practice data stays 
 - Writing drafts stay in your browser. Submitting for feedback, asking for an improved version, or asking for a grammar second opinion sends that text to Groq.
 - Pasted reading texts stay in your browser. Generating questions sends the text; looking up a word sends the selection, its sentence and paragraph; vocabulary practice sends the chosen expressions and their context sentences.
 - Speaking recordings stay in memory unless you tick "Keep this recording"; you can delete a saved recording or a whole attempt at any time.
+- Progress is computed in your browser. **Generate targeted practice** sends only the chosen area's name and description and, if you leave the box ticked, up to five of your own mistakes with their corrections; never your full history.
+- Backups are files you download. They are never uploaded, contain no API keys, and imports are fully validated before anything changes.
 - Groq's handling and retention of what you send are governed by your Groq account settings and Groq's policies, which this app does not control.

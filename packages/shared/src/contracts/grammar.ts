@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { targetedPracticeSchema } from './learning.js';
 
 /**
  * Grammar Lab contracts (M4). Generated sets are validated question by
@@ -54,6 +55,8 @@ export const grammarGenerationRequestSchema = z
     /** Optional narrower focus in the learner's words, e.g. "mixed conditionals about regrets". Untrusted. */
     focus: z.string().trim().max(200).nullable(),
     avoidTitles: z.array(z.string().trim().max(120)).max(10),
+    /** Personalized training (M6): one weakness and a few real examples. */
+    targetedPractice: targetedPracticeSchema.nullable().optional(),
   })
   .strict()
   .superRefine((value, context) => {

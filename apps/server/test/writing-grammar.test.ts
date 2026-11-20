@@ -454,3 +454,45 @@ describe('M4 JSON schemas', () => {
     expect(keys(correction)).toEqual(Object.keys(modelWritingCorrectionSchema.shape).sort());
   });
 });
+
+// --- Personalized training (M6) ------------------------------------------------------------
+
+describe('targeted practice', () => {
+  const targetedPractice = {
+    focus: 'Prepositions',
+    description: 'The learner repeatedly makes mistakes with dependent prepositions.',
+    examples: [{ original: 'depends of the weather', corrected: 'depends on the weather' }],
+  };
+
+  it('sends only the bounded profile, inside the JSON data, with a focusing instruction', async () => {
+    const fetchMock: FetchMock = vi.fn(async () => chatResponse(JSON.stringify(grammarOutput)));
+    const server = await build(fetchMock);
+    const response = await post(server, '/api/exercises/generate', { ...requests.grammar, targetedPractice });
+    expect(response.statusCode).toBe(200);
+    expect(userData(fetchMock).targetedPractice).toEqual({
+      weakness: 'Prepositions',
+      about: targetedPractice.description,
+      learnerMistakes: [{ wrote: 'depends of the weather', correction: 'depends on the weather' }],
+    });
+    expect(sentBody(fetchMock).messages[1].content).toContain('targeted practice for one recurring weakness');
+  });
+
+  it('keeps requests without a profile unchanged', async () => {
+    const fetchMock: FetchMock = vi.fn(async () => chatResponse(JSON.stringify({ ...TASK, level: 'C2', register: 'formal' })));
+    const server = await build(fetchMock);
+    expect((await post(server, '/api/exercises/generate', requests.writing)).statusCode).toBe(200);
+    expect(userData(fetchMock).targetedPractice).toBeNull();
+    expect(sentBody(fetchMock).messages[1].content).not.toContain('targeted practice');
+  });
+
+  it('rejects oversized profiles before calling Groq', async () => {
+    const fetchMock: FetchMock = vi.fn(async () => chatResponse(JSON.stringify(grammarOutput)));
+    const server = await build(fetchMock);
+    const tooMany = { ...targetedPractice, examples: Array.from({ length: 6 }, () => targetedPractice.examples[0]) };
+    const tooLong = { ...targetedPractice, examples: [{ original: 'x'.repeat(201), corrected: 'y' }] };
+    for (const profile of [tooMany, tooLong, { ...targetedPractice, history: [] }]) {
+      expect((await post(server, '/api/exercises/generate', { ...requests.writing, targetedPractice: profile })).statusCode).toBe(400);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

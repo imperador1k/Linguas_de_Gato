@@ -41,7 +41,7 @@ Each module has a status: **Available** (implemented), **In progress**, or **Pla
 | Grammar | Targeted B2–C2 structures | AI-generated sets in six question types on 12 areas, verified answer keys, deterministic scoring, rules and distractor explanations, retries and history | Available |
 | Reading | Comprehension of authentic-feeling and personal texts | AI-generated B2–C2 texts and pasted texts, adjustable reading view, saved progress, contextual lookups, comprehension questions grounded in the text | Available |
 | Vocabulary | Contextual lexis and collocations | Expressions saved with their sentence and contextual meaning, several meanings per expression, review schedule, practice with deterministic scoring and AI feedback on open answers | Available |
-| Progress | Evidence-based self-assessment | Session history, time per skill, recurring mistakes | Planned |
+| Progress | Evidence-based self-assessment | Defined metrics with denominators, recurring mistakes with traceable evidence, strengths and improvements, recommendations, targeted practice from real mistakes, full backup and restore | Available |
 
 ## 5. Media Importer
 
@@ -127,7 +127,10 @@ Generation happens only when the learner presses a "Generate" button, uses the c
 | Imported media | Browser memory (object URL); optional opt-in copy in IndexedDB (≤ 500 MB per file) | Page lifetime, or until the copy or session is deleted |
 | Listening sessions, subtitles and transcripts | IndexedDB (`linguas-de-gato` database) | Until deleted by the learner |
 | Dictation attempts (last 20 per line) | IndexedDB | Until the session or its transcript is deleted or replaced |
-| Recurring mistakes | IndexedDB (later milestone) | Until deleted by the learner |
+| Recurring mistakes, metrics, insights | Not stored: derived on demand from the records above | — |
+| Recommendation decisions (done/dismissed) and the targeted-practice log | IndexedDB | Until deleted (or replaced by an import) |
+| Targeted-practice profile (one area's name and description, optionally ≤ 5 of the learner's mistakes with corrections) | Groq (via the local server; not logged), only when the learner presses "Generate targeted practice" | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
+| Backups | A JSON file the learner downloads; never uploaded | Under the learner's control |
 | Generated transcripts (cues, word and segment timings, model and language used) | IndexedDB | Until deleted by the learner |
 | Audio sent for transcription | Server temp file (deleted in `finally`; swept at startup after a crash), then Groq | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | Transcription preferences (language, model) | `localStorage` | Until cleared |
@@ -145,7 +148,13 @@ Generation happens only when the learner presses a "Generate" button, uses the c
 | Transcript sent for speaking feedback | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | API keys | Server environment only | Never sent to the browser |
 
-Data export and import (JSON) is planned for a later milestone (see ROADMAP.md).
+Data export and import: Progress → Data & backups exports every store and preference as one versioned JSON file (media optional and size-limited, omissions listed) and imports a backup after full validation, by merge or by replace (with a safety backup downloaded first), atomically.
+
+### 7.1 Progress rules
+
+- Metrics show their definition and denominator; time is shown only where it is measured (speaking recordings, the optional writing timer); reading time is labelled an estimate; there is no total study time, combined score or CEFR level.
+- A mistake is *recurring* at ≥ 4 occurrences from ≥ 2 pieces of work with the latest within 60 days, *preliminary* from 2; a *strength* needs ≥ 6 correct answers from ≥ 2 pieces of work with ≤ 20% errors; *improving* needs clearly fewer mistakes in the last 30 days than in the 90 before.
+- Stylistic suggestions, speech-recognition fixes, unchecked work, answers accepted on a second opinion and unrated short answers are never counted as mistakes.
 
 ## 8. Experience principles
 

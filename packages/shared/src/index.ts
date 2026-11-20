@@ -26,5 +26,8 @@ export * from './contracts/writing.js';
 export * from './contracts/grammar.js';
 export * from './contracts/reading.js';
 export * from './contracts/vocabulary.js';
+export * from './contracts/learning.js';
+export * from './contracts/backup.js';
+export * from './learning/index.js';
 export * from './contracts/system.js';
 export * from './contracts/transcription.js';

@@ -8,6 +8,7 @@ import {
   vocabularyItemSchema,
 } from './speaking.js';
 import { grammarGenerationRequestSchema, grammarSetSchema } from './grammar.js';
+import { targetedPracticeSchema } from './learning.js';
 import { writingGenerationRequestSchema, writingTaskSchema } from './writing.js';
 import {
   READING_LIMITS,
@@ -51,6 +52,8 @@ export const speakingGenerationRequestSchema = z
     skillFocus: speakingSkillFocusSchema.nullable(),
     /** Titles already shown in this session, so "Regenerate" gives something new. */
     avoidTitles: z.array(z.string().trim().max(120)).max(10),
+    /** Personalized training (M6): one weakness and a few real examples. */
+    targetedPractice: targetedPracticeSchema.nullable().optional(),
   })
   .strict();
 export type SpeakingGenerationRequest = z.infer<typeof speakingGenerationRequestSchema>;

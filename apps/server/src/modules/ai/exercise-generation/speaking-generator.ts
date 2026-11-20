@@ -7,7 +7,7 @@ import {
 } from '@ldg/shared';
 import { AppError } from '../../../errors.js';
 import { arrayOf, enumOf, object, string, stringArray } from '../json-schema.js';
-import { LEVEL_GUIDE, UNTRUSTED_DATA_RULE, type ExerciseGenerator } from './generator.js';
+import { LEVEL_GUIDE, UNTRUSTED_DATA_RULE, targetedPracticeData, targetedPracticeInstruction, type ExerciseGenerator } from './generator.js';
 
 /**
  * Speaking task generator. It produces a task to *prepare and speak*, never
@@ -101,8 +101,9 @@ export const speakingGenerator: ExerciseGenerator<'speaking'> = {
       skillFocus: request.skillFocus,
       interest: request.interest && request.interest.trim() !== '' ? request.interest.trim() : null,
       avoidTheseTitles: request.avoidTitles,
+      targetedPractice: targetedPracticeData(request.targetedPractice),
     };
-    return `Design one speaking task with these settings. If titles to avoid are listed, make a clearly different task.\n\n${JSON.stringify(payload)}`;
+    return `Design one speaking task with these settings. If titles to avoid are listed, make a clearly different task.${targetedPracticeInstruction(request.targetedPractice)}\n\n${JSON.stringify(payload)}`;
   },
 
   interpret(output, request) {

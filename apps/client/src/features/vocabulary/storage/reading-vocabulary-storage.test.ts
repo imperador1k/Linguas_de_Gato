@@ -289,7 +289,7 @@ describe('database migration v4 → v5', () => {
 
     const database = await openAppDatabase(factory);
     expect(database.version).toBe(APP_DB_VERSION);
-    expect(database.version).toBe(5);
+    expect(database.version).toBeGreaterThanOrEqual(5);
     const writing = indexedDbWritingRepository(database);
     expect(await writing.tasks.get('w1')).toEqual(writingTask);
     expect(await writing.drafts.get('w1')).toEqual(draft);

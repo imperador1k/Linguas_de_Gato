@@ -19,9 +19,13 @@ import { openDatabase } from './indexed-db';
  * - v5 (M5 Reading & Vocabulary): readingTexts, readingQuestionSets (indexed
  *   by text), vocabularyEntries (indexed by key), vocabularyPracticeSets.
  *   Existing stores and their records are left untouched.
+ * - v6 (M6 Personal Learning Engine): recommendationStates (the learner's
+ *   dismiss/complete decisions) and trainingSessions (a log of generated
+ *   targeted practice). All analytics are derived from the module stores on
+ *   demand, so nothing else changes. Existing stores are left untouched.
  */
 export const APP_DB_NAME = 'linguas-de-gato';
-export const APP_DB_VERSION = 5;
+export const APP_DB_VERSION = 6;
 
 export const LISTENING_EXERCISES_BY_SESSION = 'bySession';
 export const WRITING_ATTEMPTS_BY_TASK = 'byTask';
@@ -45,6 +49,8 @@ export const STORES = {
   readingQuestionSets: 'readingQuestionSets',
   vocabularyEntries: 'vocabularyEntries',
   vocabularyPracticeSets: 'vocabularyPracticeSets',
+  recommendationStates: 'recommendationStates',
+  trainingSessions: 'trainingSessions',
 } as const;
 
 export function upgradeAppDatabase(database: IDBDatabase, oldVersion: number): void {
@@ -78,6 +84,10 @@ export function upgradeAppDatabase(database: IDBDatabase, oldVersion: number): v
     // One entry per expression is enforced by the app (merging senses); the index makes the lookup cheap.
     database.createObjectStore(STORES.vocabularyEntries, { keyPath: 'id' }).createIndex(VOCABULARY_BY_KEY, 'key', { unique: false });
     database.createObjectStore(STORES.vocabularyPracticeSets, { keyPath: 'id' });
+  }
+  if (oldVersion < 6) {
+    database.createObjectStore(STORES.recommendationStates, { keyPath: 'id' });
+    database.createObjectStore(STORES.trainingSessions, { keyPath: 'id' });
   }
 }
 

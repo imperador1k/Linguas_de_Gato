@@ -6,7 +6,7 @@ import {
 } from '@ldg/shared';
 import { AppError } from '../../../errors.js';
 import { arrayOf, enumOf, nullableInteger, nullableString, object, string, stringArray } from '../json-schema.js';
-import { LEVEL_GUIDE, UNTRUSTED_DATA_RULE, type ExerciseGenerator } from './generator.js';
+import { LEVEL_GUIDE, UNTRUSTED_DATA_RULE, targetedPracticeData, targetedPracticeInstruction, type ExerciseGenerator } from './generator.js';
 
 /**
  * Grammar question generator. Every question is verified for consistency
@@ -105,8 +105,9 @@ export const grammarGenerator: ExerciseGenerator<'grammar'> = {
       numberOfQuestions: request.questionCount,
       focus: request.focus && request.focus.trim() !== '' ? request.focus.trim() : null,
       avoidTheseTitles: request.avoidTitles,
+      targetedPractice: targetedPracticeData(request.targetedPractice),
     };
-    return `Write one grammar practice set with these settings.\n\n${JSON.stringify(payload)}`;
+    return `Write one grammar practice set with these settings.${targetedPracticeInstruction(request.targetedPractice)}\n\n${JSON.stringify(payload)}`;
   },
 
   interpret(output, request) {

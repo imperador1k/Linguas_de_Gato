@@ -1,4 +1,4 @@
-import type { GenerationRequest, GenerationResult } from '@ldg/shared';
+import type { GenerationRequest, GenerationResult, TargetedPractice } from '@ldg/shared';
 import type { ChatFeatureMessages } from '../groq-chat.js';
 import type { JsonSchema } from '../json-schema.js';
 
@@ -33,3 +33,20 @@ export const LEVEL_GUIDE = `CEFR TARGETS (these guide difficulty; the result is 
 - C1: nuance, precise expression and well-structured complex argumentation; implicit meaning, hedging, concession, natural collocations and idiomatic language.
 - C2: subtle distinctions, sophisticated reasoning, control of register and tone, idiomatic precision; weighing competing values and implications.
 Create difficulty through the thinking and language a task demands, never through obscure or rare vocabulary.`;
+
+/**
+ * Personalized training (M6). The profile is already bounded by the shared
+ * schema (one focus, ≤ 5 clipped examples); it travels inside the JSON data
+ * like everything else, and the instruction below tells the model how to
+ * use it. The examples are the learner's own mistakes: they inform the
+ * practice and must never be copied into it verbatim as answers.
+ */
+export function targetedPracticeData(targeted: TargetedPractice | null | undefined) {
+  if (!targeted) return null;
+  return { weakness: targeted.focus, about: targeted.description, learnerMistakes: targeted.examples.map((example) => ({ wrote: example.original, correction: example.corrected })) };
+}
+
+export function targetedPracticeInstruction(targeted: TargetedPractice | null | undefined): string {
+  if (!targeted) return '';
+  return '\n\nThis is targeted practice for one recurring weakness ("targetedPractice"). Make it the central focus of the material so the learner must use or recognise that language repeatedly. If "learnerMistakes" are listed, practise the same patterns in new sentences and contexts; never reuse those sentences or their corrections verbatim.';
+}

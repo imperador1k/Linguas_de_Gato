@@ -56,7 +56,7 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 ### Later: speaking
 
 - Pronunciation and prosody feedback needs dedicated audio analysis (phoneme alignment), not a transcript; deferred.
-- A view of recurring mistakes across attempts belongs with Progress (M6).
+- A view of recurring mistakes across attempts: done in Progress (M6).
 
 ## M4 — Writing & Grammar Lab ✅
 
@@ -69,7 +69,7 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 ### Later: writing and grammar
 
 - Side-by-side diff of the original and improved versions.
-- Grammar sets generated from recurring mistakes in Writing and Speaking (with Progress, M6).
+- Grammar sets generated from recurring mistakes in Writing and Speaking: done as Personalized training (M6).
 
 ## M5 — Reading & Vocabulary Lab ✅
 
@@ -84,10 +84,21 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 - Import from files (EPUB, PDF) the learner owns; other languages through the existing `language` fields.
 - Vocabulary from Listening transcripts and Writing feedback; an adaptive review algorithm.
 
-## M6 — Progress, export and import
+## M6 — Personal Learning Engine ✅
 
-- Session history, time per skill, recurring-mistake insights (no gamification).
-- Versioned JSON export and import of all local data.
+- `/progress` with Overview, Skills, Recurring errors, Recommendations, Personalized training and Data & backups.
+- Metrics from all six modules over 7/30/90 days or all time, each with a definition and its denominator; measured time (recordings, writing timer) kept apart from estimates (reading); no total study time, combined score or CEFR level.
+- Error intelligence: a canonical taxonomy of 32 categories; traceable observations from Speaking and Writing feedback (errors only), checked Grammar rounds, dictation diffs, comprehension sets and vocabulary practice and reviews; Whisper corrections, suggestions, duplicates and unchecked work excluded.
+- Deterministic insights with thresholds (recurring, preliminary, improving, strength, not enough evidence), trends and evidence drill-down.
+- Recommendations ranked by frequency, recency, evidence quality, skill importance and recent practice; done/dismissed until new evidence appears.
+- Targeted practice through the existing Grammar, Writing and Speaking generators with a bounded profile (one area, ≤ 5 real examples).
+- Versioned JSON backup of every store and preference, optional bounded media, validated atomic import (merge or replace with a safety backup).
+- Database v6.
+
+### Later: progress
+
+- Insight history over time (snapshots) and per-category goals chosen by the learner.
+- Automatic periodic backup reminders; backups split into several files for large media libraries.
 
 ## Later
 

@@ -142,6 +142,13 @@ export const router = createBrowserRouter([
           return { Component: VocabularyPracticePage };
         },
       },
+      {
+        path: 'progress',
+        lazy: async () => {
+          const { ProgressPage } = await import('@/features/progress/progress-page');
+          return { Component: ProgressPage };
+        },
+      },
       ...plannedRoutes,
       { path: '*', Component: NotFoundPage },
     ],

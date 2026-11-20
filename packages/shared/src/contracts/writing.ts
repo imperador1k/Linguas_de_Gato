@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { targetedPracticeSchema } from './learning.js';
 import { speakingCategorySchema } from './speaking.js';
 
 /**
@@ -68,6 +69,8 @@ export const writingGenerationRequestSchema = z
     /** A specific learning objective in the learner's words, e.g. "use concession clauses". */
     objective: z.string().trim().max(200).nullable(),
     avoidTitles: z.array(z.string().trim().max(120)).max(10),
+    /** Personalized training (M6): one weakness and a few real examples. */
+    targetedPractice: targetedPracticeSchema.nullable().optional(),
   })
   .strict();
 export type WritingGenerationRequest = z.infer<typeof writingGenerationRequestSchema>;

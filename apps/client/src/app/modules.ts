@@ -108,10 +108,10 @@ export const MODULES: readonly LearningModule[] = [
     path: '/progress',
     icon: ChartLine,
     group: 'review',
-    status: 'planned',
+    status: 'available',
     milestone: 'M6',
-    summary: 'See where your time goes and which mistakes keep coming back. Evidence, not points.',
-    highlights: ['Time per skill', 'Recurring mistakes', 'Data export and import'],
+    summary: 'See what you have practised and which mistakes keep coming back, with the evidence behind each one. Evidence, not points.',
+    highlights: ['Measured activity, never guessed', 'Recurring mistakes with examples', 'Targeted practice from your errors', 'Full backup and restore'],
   },
 ];
 

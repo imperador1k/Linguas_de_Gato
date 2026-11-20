@@ -9,7 +9,7 @@ import {
 } from '@ldg/shared';
 import { AppError } from '../../../errors.js';
 import { arrayOf, enumOf, integer, nullableString, object, string, stringArray } from '../json-schema.js';
-import { LEVEL_GUIDE, UNTRUSTED_DATA_RULE, type ExerciseGenerator } from './generator.js';
+import { LEVEL_GUIDE, UNTRUSTED_DATA_RULE, targetedPracticeData, targetedPracticeInstruction, type ExerciseGenerator } from './generator.js';
 
 /**
  * Writing task generator. It produces a task to write, never a model answer:
@@ -115,8 +115,9 @@ export const writingGenerator: ExerciseGenerator<'writing'> = {
       interest: request.interest && request.interest.trim() !== '' ? request.interest.trim() : null,
       objective: request.objective && request.objective.trim() !== '' ? request.objective.trim() : null,
       avoidTheseTitles: request.avoidTitles,
+      targetedPractice: targetedPracticeData(request.targetedPractice),
     };
-    return `Design one writing task with these settings. If titles to avoid are listed, make a clearly different task.\n\n${JSON.stringify(payload)}`;
+    return `Design one writing task with these settings. If titles to avoid are listed, make a clearly different task.${targetedPracticeInstruction(request.targetedPractice)}\n\n${JSON.stringify(payload)}`;
   },
 
   interpret(output, request) {
