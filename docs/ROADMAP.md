@@ -56,7 +56,7 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 ### Later: speaking
 
 - Pronunciation and prosody feedback needs dedicated audio analysis (phoneme alignment), not a transcript; deferred.
-- A view of recurring mistakes across attempts belongs with Progress (M7).
+- A view of recurring mistakes across attempts belongs with Progress (M6).
 
 ## M4 — Writing & Grammar Lab ✅
 
@@ -69,17 +69,22 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 ### Later: writing and grammar
 
 - Side-by-side diff of the original and improved versions.
-- Grammar sets generated from recurring mistakes in Writing and Speaking (with Progress, M7).
+- Grammar sets generated from recurring mistakes in Writing and Speaking (with Progress, M6).
 
-## M5 — Vocabulary
+## M5 — Reading & Vocabulary Lab ✅
 
-- Contextual vocabulary capture from Listening, Reading and Writing feedback, collocation sets, spaced review.
+- Reading: AI-generated texts (B2–C2; article, opinion piece, informative article, report, narrative; length; interests; language focus) and pasted texts; a comfortable reading view with preferences, saved progress and completion.
+- Comprehension questions grounded in the text (seven types), verified quotes and paragraph references, copy-only answers rejected, answers hidden until checked, "Show in text".
+- Contextual lookups of selected words and expressions (meaning here, definition, collocations, synonyms and antonyms, register, examples, patterns, AI-estimated CEFR, optional Portuguese).
+- A personal collection: one entry per expression with several contextual meanings, sources and examples; search and filters; a simple review schedule; practice from saved expressions with deterministic scoring and separate AI feedback on open answers.
+- Database v5.
 
-## M6 — Reading
+### Later: reading and vocabulary
 
-- Text import, reading view with typographic controls, comprehension questions, inline vocabulary capture.
+- Import from files (EPUB, PDF) the learner owns; other languages through the existing `language` fields.
+- Vocabulary from Listening transcripts and Writing feedback; an adaptive review algorithm.
 
-## M7 — Progress, export and import
+## M6 — Progress, export and import
 
 - Session history, time per skill, recurring-mistake insights (no gamification).
 - Versioned JSON export and import of all local data.

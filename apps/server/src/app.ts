@@ -12,6 +12,7 @@ import { exerciseRoutes } from './routes/exercises.js';
 import { grammarRoutes } from './routes/grammar.js';
 import { writingRoutes } from './routes/writing.js';
 import { speakingRoutes } from './routes/speaking.js';
+import { vocabularyRoutes } from './routes/vocabulary.js';
 import { systemRoutes } from './routes/system.js';
 import { transcriptionRoutes } from './routes/transcriptions.js';
 
@@ -97,6 +98,7 @@ export async function buildApp(config: AppConfig, dependencies: AppDependencies 
   await app.register(exerciseRoutes, { prefix: '/api', ai, timeoutMs: config.assessment.timeoutMs });
   await app.register(writingRoutes, { prefix: '/api', ai, timeoutMs: config.assessment.timeoutMs });
   await app.register(grammarRoutes, { prefix: '/api', ai, timeoutMs: config.assessment.timeoutMs });
+  await app.register(vocabularyRoutes, { prefix: '/api', ai, timeoutMs: config.assessment.timeoutMs });
 
   if (config.clientDistDir) {
     await app.register(fastifyStatic, {

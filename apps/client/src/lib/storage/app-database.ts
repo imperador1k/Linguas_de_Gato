@@ -16,12 +16,17 @@ import { openDatabase } from './indexed-db';
  * - v4 (M4 Writing & Grammar): writingTasks, writingDrafts (one per task),
  *   writingAttempts (indexed by task), grammarSets. Existing stores and their
  *   records are left untouched.
+ * - v5 (M5 Reading & Vocabulary): readingTexts, readingQuestionSets (indexed
+ *   by text), vocabularyEntries (indexed by key), vocabularyPracticeSets.
+ *   Existing stores and their records are left untouched.
  */
 export const APP_DB_NAME = 'linguas-de-gato';
-export const APP_DB_VERSION = 4;
+export const APP_DB_VERSION = 5;
 
 export const LISTENING_EXERCISES_BY_SESSION = 'bySession';
 export const WRITING_ATTEMPTS_BY_TASK = 'byTask';
+export const READING_QUESTIONS_BY_TEXT = 'byText';
+export const VOCABULARY_BY_KEY = 'byKey';
 
 export const STORES = {
   sessions: 'sessions',
@@ -36,6 +41,10 @@ export const STORES = {
   writingDrafts: 'writingDrafts',
   writingAttempts: 'writingAttempts',
   grammarSets: 'grammarSets',
+  readingTexts: 'readingTexts',
+  readingQuestionSets: 'readingQuestionSets',
+  vocabularyEntries: 'vocabularyEntries',
+  vocabularyPracticeSets: 'vocabularyPracticeSets',
 } as const;
 
 export function upgradeAppDatabase(database: IDBDatabase, oldVersion: number): void {
@@ -62,6 +71,13 @@ export function upgradeAppDatabase(database: IDBDatabase, oldVersion: number): v
     const attempts = database.createObjectStore(STORES.writingAttempts, { keyPath: 'id' });
     attempts.createIndex(WRITING_ATTEMPTS_BY_TASK, 'taskId', { unique: false });
     database.createObjectStore(STORES.grammarSets, { keyPath: 'id' });
+  }
+  if (oldVersion < 5) {
+    database.createObjectStore(STORES.readingTexts, { keyPath: 'id' });
+    database.createObjectStore(STORES.readingQuestionSets, { keyPath: 'id' }).createIndex(READING_QUESTIONS_BY_TEXT, 'textId', { unique: false });
+    // One entry per expression is enforced by the app (merging senses); the index makes the lookup cheap.
+    database.createObjectStore(STORES.vocabularyEntries, { keyPath: 'id' }).createIndex(VOCABULARY_BY_KEY, 'key', { unique: false });
+    database.createObjectStore(STORES.vocabularyPracticeSets, { keyPath: 'id' });
   }
 }
 

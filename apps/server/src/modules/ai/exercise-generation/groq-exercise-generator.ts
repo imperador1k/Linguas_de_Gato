@@ -4,6 +4,9 @@ import type { ExerciseGenerationProvider } from '../providers.js';
 import type { ExerciseGenerator, GeneratorRegistry } from './generator.js';
 import { grammarGenerator } from './grammar-generator.js';
 import { listeningGenerator } from './listening-generator.js';
+import { readingGenerator } from './reading-generator.js';
+import { readingQuestionsGenerator } from './reading-questions-generator.js';
+import { vocabularyPracticeGenerator } from './vocabulary-practice-generator.js';
 import { speakingGenerator } from './speaking-generator.js';
 import { writingGenerator } from './writing-generator.js';
 
@@ -20,6 +23,9 @@ export const DEFAULT_GENERATORS: GeneratorRegistry = {
   listening: listeningGenerator,
   writing: writingGenerator,
   grammar: grammarGenerator,
+  reading: readingGenerator,
+  reading_questions: readingQuestionsGenerator,
+  vocabulary_practice: vocabularyPracticeGenerator,
 };
 
 export interface GroqExerciseGeneratorOptions extends GroqChatOptions {

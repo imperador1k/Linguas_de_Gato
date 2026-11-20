@@ -39,8 +39,8 @@ Each module has a status: **Available** (implemented), **In progress**, or **Pla
 | Speaking | Deliberate speaking practice with evidence-based feedback | B2/C1 prompt library, custom topics and AI-generated B2/C1/C2 tasks, free and guided modes, microphone recording, Whisper transcription with learner review, AI feedback on grammar, vocabulary, coherence, naturalness and task achievement (every correction quoted from the transcript), deterministic fluency measurements, follow-up exercises, saved attempts; pronunciation scoring planned | Available |
 | Writing | Accuracy and naturalness in long-form output | AI-generated B2–C2 tasks in 12 formats, autosaved drafts, evidence-based feedback separating errors from suggestions, annotated corrections, optional improved version | Available |
 | Grammar | Targeted B2–C2 structures | AI-generated sets in six question types on 12 areas, verified answer keys, deterministic scoring, rules and distractor explanations, retries and history | Available |
-| Reading | Comprehension of authentic texts | Text import, comprehension questions, inline vocabulary capture | Planned |
-| Vocabulary | Contextual lexis and collocations | Words captured in context, collocation sets, spaced review | Planned |
+| Reading | Comprehension of authentic-feeling and personal texts | AI-generated B2–C2 texts and pasted texts, adjustable reading view, saved progress, contextual lookups, comprehension questions grounded in the text | Available |
+| Vocabulary | Contextual lexis and collocations | Expressions saved with their sentence and contextual meaning, several meanings per expression, review schedule, practice with deterministic scoring and AI feedback on open answers | Available |
 | Progress | Evidence-based self-assessment | Session history, time per skill, recurring mistakes | Planned |
 
 ## 5. Media Importer
@@ -100,6 +100,19 @@ Generation happens only when the learner presses a "Generate" button, uses the c
 - **Quality:** generated questions are checked automatically; ambiguous or inconsistent ones (duplicate options, invalid keys, a transformation that ignores its keyword, an error correction that changes nothing, a word order that uses other words) are removed and counted.
 - **Answering:** answers and explanations stay hidden until "Check answers". Scoring is deterministic: an answer is correct when it matches an accepted answer after ignoring only harmless differences (capitals, quote style, spacing, final punctuation, contracted forms); commas and words still count. After checking: the correct answers, the rule, the explanation and why each option is right or wrong. For open answers that don't match the key, the learner may ask for an AI second opinion against an explicit rubric; it is shown separately and never changes the score. "Try again" starts a new round; every checked round is kept in the history.
 
+### 5.8 Reading Lab
+
+- **Texts:** generated (level B2/C1/C2, topic, text type: feature article, opinion piece, informative article, report or narrative; about 250–800 words; optional interests and language focus) or pasted by the learner (80 words to 20,000 characters; paragraphs from blank lines). No web pages are downloaded and no URL can be imported. Generated texts come with reading objectives and expressions worth noticing (verified to occur in the text); reading time is estimated at 200 words per minute.
+- **Reading view:** serif or sans, four text sizes, three line spacings and widths; progress follows the furthest paragraph read; the learner marks a text as finished.
+- **Look up:** select up to eight words in one paragraph (or type them) and ask for an analysis of that use in that sentence: meaning here, a definition, part of speech, register, collocations, similar and opposite expressions, examples, patterns and an AI-estimated CEFR level; an optional Portuguese explanation. Save it to the vocabulary collection.
+- **Comprehension:** main idea, detail, inference, author's intention, argument analysis, vocabulary in context and implication, in multiple-choice and short-answer form. Every question quotes the text; unverifiable questions, invalid paragraph references and answers that simply copy a sentence are removed. Answers are hidden until "Check answers"; results show explanations and the evidence, which "Show in text" highlights in the passage.
+
+### 5.9 Vocabulary Lab
+
+- **Collection:** one entry per expression (word, phrasal verb, idiom, collocation or expression), keyed by its dictionary form, with one or more contextual meanings, each with its source sentence and text, definition, examples, collocations, synonyms, antonyms, register, patterns and an AI-estimated level. Saving the same meaning again changes nothing; a new meaning is added to the same entry. Search, filters by type and review status, deletion of a meaning or an entry.
+- **Review:** due expressions are shown with their context sentence; the learner recalls the meaning, reveals it and rates Again (tomorrow), Good (next step) or Easy (two steps) on a fixed ladder of 0, 1, 3, 7, 16 and 35 days. From about two weeks an expression counts as known.
+- **Practice:** from selected expressions or the whole collection: fill in the blank, meaning in context, collocations, matching, sentence completion, paraphrasing and the learner's own sentences. Objective questions are scored against the key; open answers get optional AI feedback against explicit criteria (right meaning, task met, grammatical and natural), shown separately from the score. Retries keep a history.
+
 ## 6. Legal and ethical constraints
 
 - YouTube content is only *played* through the official IFrame player, in line with the YouTube Terms of Service.
@@ -123,6 +136,10 @@ Generation happens only when the learner presses a "Generate" button, uses the c
 | Text sent for exercise generation (speaking settings and optional interest; or the session's transcript text, never audio) | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | Writing tasks, drafts (one per task), submitted texts with feedback and improved versions | IndexedDB | Until deleted by the learner (deleting a task deletes its draft; submissions are kept until deleted) |
 | Grammar sets, answers, second opinions and result history | IndexedDB | Until the set is deleted |
+| Reading texts (generated or pasted), progress and comprehension sets | IndexedDB | Until deleted (deleting a text deletes its question sets) |
+| Vocabulary entries, review history and practice sets | IndexedDB | Until deleted by the learner (entries survive deleting the text they came from) |
+| Reading preferences, explanation language | `localStorage` | Until cleared |
+| Text sent for reading generation, questions (the text), lookups (selection, sentence, paragraph), vocabulary practice and evaluations | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | Text sent for writing feedback, improved versions, task generation and grammar second opinions | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | Speaking recordings | Browser memory; IndexedDB only if the learner ticks "Keep this recording" | Page lifetime by default; otherwise until the learner deletes the recording or the attempt |
 | Transcript sent for speaking feedback | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |

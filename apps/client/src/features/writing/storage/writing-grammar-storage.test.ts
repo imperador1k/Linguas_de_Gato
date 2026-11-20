@@ -251,8 +251,8 @@ describe('database migration v3 → v4', () => {
     speaking.close();
 
     const database = await openAppDatabase(factory);
+    // Later versions upgrade further; the v4 stores must exist whatever the current version is.
     expect(database.version).toBe(APP_DB_VERSION);
-    expect(database.version).toBe(4);
     expect([...database.objectStoreNames]).toEqual(expect.arrayContaining(['writingTasks', 'writingDrafts', 'writingAttempts', 'grammarSets']));
     expect([...database.transaction('writingAttempts').objectStore('writingAttempts').indexNames]).toEqual(['byTask']);
     const writing = indexedDbWritingRepository(database);

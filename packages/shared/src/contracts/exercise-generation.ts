@@ -9,6 +9,14 @@ import {
 } from './speaking.js';
 import { grammarGenerationRequestSchema, grammarSetSchema } from './grammar.js';
 import { writingGenerationRequestSchema, writingTaskSchema } from './writing.js';
+import {
+  READING_LIMITS,
+  readingGenerationRequestSchema,
+  readingGenerationResultSchema,
+  readingQuestionSchema,
+  readingQuestionsRequestSchema,
+} from './reading.js';
+import { VOCABULARY_LIMITS, vocabularyPracticeRequestSchema, vocabularyQuestionSchema } from './vocabulary.js';
 
 /**
  * AI exercise generation (shared by learning modules).
@@ -178,6 +186,9 @@ export const generationRequestSchema = z.discriminatedUnion('kind', [
   listeningGenerationRequestSchema,
   writingGenerationRequestSchema,
   grammarGenerationRequestSchema,
+  readingGenerationRequestSchema,
+  readingQuestionsRequestSchema,
+  vocabularyPracticeRequestSchema,
 ]);
 export type GenerationRequest = z.infer<typeof generationRequestSchema>;
 
@@ -197,6 +208,22 @@ export const generationResultSchema = z.discriminatedUnion('kind', [
       kind: z.literal('grammar'),
       set: grammarSetSchema,
       /** Model questions dropped as ambiguous, inconsistent or of an unrequested type. */
+      discarded: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z.object({ kind: z.literal('reading'), text: readingGenerationResultSchema }).strict(),
+  z
+    .object({
+      kind: z.literal('reading_questions'),
+      questions: z.array(readingQuestionSchema).min(1).max(READING_LIMITS.maxQuestions),
+      /** Questions dropped for unverifiable evidence, invalid references, copy-only answers or inconsistent structure. */
+      discarded: z.number().int().nonnegative(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('vocabulary_practice'),
+      questions: z.array(vocabularyQuestionSchema).min(1).max(VOCABULARY_LIMITS.maxQuestions),
       discarded: z.number().int().nonnegative(),
     })
     .strict(),

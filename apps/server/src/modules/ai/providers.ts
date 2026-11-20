@@ -8,6 +8,10 @@ import type {
   GrammarEvaluationResponse,
   TranscriptionModel,
   TranscriptionResult,
+  VocabularyEvaluationRequest,
+  VocabularyEvaluationResponse,
+  VocabularyLookupRequest,
+  VocabularyLookupResponse,
   WritingAssessmentRequest,
   WritingAssessmentResponse,
   WritingImprovementRequest,
@@ -17,6 +21,7 @@ import type { AppConfig } from '../../config/env.js';
 import { GroqExerciseGenerator } from './exercise-generation/groq-exercise-generator.js';
 import { GroqAssessmentProvider } from './groq-assessment.js';
 import { GroqGrammarEvaluator } from './groq-grammar.js';
+import { GroqVocabularyProvider } from './groq-vocabulary.js';
 import { GroqWritingProvider } from './groq-writing.js';
 import { GroqTranscriptionProvider } from './groq-transcription.js';
 
@@ -82,6 +87,15 @@ export interface GrammarEvaluationProvider {
   evaluate(request: GrammarEvaluationRequest, signal: AbortSignal): Promise<GrammarEvaluationResponse>;
 }
 
+export interface VocabularyProvider {
+  readonly id: AiProviderId;
+  readonly model: string;
+  /** Contextual analysis of a selection; rejects when it doesn't match the sentence. */
+  lookup(request: VocabularyLookupRequest, signal: AbortSignal): Promise<VocabularyLookupResponse>;
+  /** Rubric-based evaluation of an open practice answer. */
+  evaluate(request: VocabularyEvaluationRequest, signal: AbortSignal): Promise<VocabularyEvaluationResponse>;
+}
+
 export interface AiProviders {
   /** Which vendor has credentials configured, regardless of feature support. */
   readonly configuredProvider: AiProviderId | null;
@@ -91,6 +105,7 @@ export interface AiProviders {
   readonly generation: ExerciseGenerationProvider | null;
   readonly writing: WritingFeedbackProvider | null;
   readonly grammar: GrammarEvaluationProvider | null;
+  readonly vocabulary: VocabularyProvider | null;
 }
 
 export interface AiProviderDependencies {
@@ -102,7 +117,7 @@ export function createAiProviders(
   config: Pick<AppConfig, 'groqApiKey' | 'groqBaseUrl' | 'transcription' | 'assessment'>,
   dependencies: AiProviderDependencies = {},
 ): AiProviders {
-  if (!config.groqApiKey) return { configuredProvider: null, transcription: null, assessment: null, generation: null, writing: null, grammar: null };
+  if (!config.groqApiKey) return { configuredProvider: null, transcription: null, assessment: null, generation: null, writing: null, grammar: null, vocabulary: null };
   const fetchImpl = dependencies.fetch ?? globalThis.fetch;
   const chat = {
     apiKey: config.groqApiKey,
@@ -126,5 +141,6 @@ export function createAiProviders(
     generation: new GroqExerciseGenerator(chat),
     writing: new GroqWritingProvider(chat),
     grammar: new GroqGrammarEvaluator(chat),
+    vocabulary: new GroqVocabularyProvider(chat),
   };
 }

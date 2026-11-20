@@ -100,6 +100,48 @@ export const router = createBrowserRouter([
           return { Component: GrammarSetPage };
         },
       },
+      {
+        path: 'reading',
+        lazy: async () => {
+          const { ReadingLabPage } = await import('@/features/reading/reading-lab-page');
+          return { Component: ReadingLabPage };
+        },
+      },
+      {
+        path: 'reading/texts/:textId',
+        lazy: async () => {
+          const { ReaderPage } = await import('@/features/reading/reader-page');
+          return { Component: ReaderPage };
+        },
+      },
+      {
+        path: 'vocabulary',
+        lazy: async () => {
+          const { VocabularyPage } = await import('@/features/vocabulary/vocabulary-page');
+          return { Component: VocabularyPage };
+        },
+      },
+      {
+        path: 'vocabulary/entries/:entryId',
+        lazy: async () => {
+          const { VocabularyEntryPage } = await import('@/features/vocabulary/entry-page');
+          return { Component: VocabularyEntryPage };
+        },
+      },
+      {
+        path: 'vocabulary/review',
+        lazy: async () => {
+          const { VocabularyReviewPage } = await import('@/features/vocabulary/review-page');
+          return { Component: VocabularyReviewPage };
+        },
+      },
+      {
+        path: 'vocabulary/practice/:setId',
+        lazy: async () => {
+          const { VocabularyPracticePage } = await import('@/features/vocabulary/practice-page');
+          return { Component: VocabularyPracticePage };
+        },
+      },
       ...plannedRoutes,
       { path: '*', Component: NotFoundPage },
     ],

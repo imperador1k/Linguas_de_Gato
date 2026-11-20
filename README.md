@@ -6,7 +6,9 @@ A personal, local-first workspace for deliberate language practice. English come
 - **Speaking** (available): B2 and C1 speaking tasks, your own topics and AI-generated B2/C1/C2 tasks, microphone recording, a transcript you review before anything is assessed, detailed AI feedback where every correction quotes your own words, fluency measurements from timestamps, and exercises built from your mistakes. Attempts are saved in the browser.
 - **Writing** (available): AI-generated B2–C2 tasks in 12 formats, a distraction-free editor with autosaved drafts and live word counts, and feedback where every correction quotes your text and errors are kept apart from optional suggestions; an improved version only if you ask for it.
 - **Grammar** (available): AI-generated exercises on 12 advanced areas in six question types, checked against a verified answer key, with rules, explanations of every option, retries and your result history.
-- **Reading, Vocabulary, Progress**: planned (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+- **Reading** (available): AI-generated texts for your level or your own pasted texts, in a comfortable reading view with saved progress; select any word or phrase to look it up in context, and check your understanding with questions grounded in the text.
+- **Vocabulary** (available): a personal dictionary of the expressions you save, each kept with the sentence you met it in and its meaning there; a simple review schedule and practice built from your own words.
+- **Progress**: planned (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ## Requirements
 
@@ -65,5 +67,6 @@ There are no accounts, no server database and no analytics. Practice data stays 
 - When you ask for **speaking feedback**, your confirmed transcript (not the audio) is sent to Groq. It is not logged by this app.
 - When you press **Generate** (a speaking or writing task, listening or grammar exercises), your settings and optional topic text, or the session's transcript text, are sent to Groq. Nothing is generated without that click.
 - Writing drafts stay in your browser. Submitting for feedback, asking for an improved version, or asking for a grammar second opinion sends that text to Groq.
+- Pasted reading texts stay in your browser. Generating questions sends the text; looking up a word sends the selection, its sentence and paragraph; vocabulary practice sends the chosen expressions and their context sentences.
 - Speaking recordings stay in memory unless you tick "Keep this recording"; you can delete a saved recording or a whole attempt at any time.
 - Groq's handling and retention of what you send are governed by your Groq account settings and Groq's policies, which this app does not control.
