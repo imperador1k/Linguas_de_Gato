@@ -124,7 +124,7 @@ Generation happens only when the learner presses a "Generate" button, uses the c
 | Data | Location | Retention |
 | --- | --- | --- |
 | Preferences (theme) | `localStorage` | Until cleared |
-| Imported media | Browser memory (object URL); optional opt-in copy in IndexedDB (≤ 500 MB per file) | Page lifetime, or until the copy or session is deleted |
+| Imported media | A copy in IndexedDB, kept by default for files ≤ 100 MB (opt-out at creation; larger files up to 500 MB on request); otherwise browser memory only | Until the copy or session is deleted; without a copy, the page lifetime (the session then asks for the file again) |
 | Listening sessions, subtitles and transcripts | IndexedDB (`linguas-de-gato` database) | Until deleted by the learner |
 | Dictation attempts (last 20 per line) | IndexedDB | Until the session or its transcript is deleted or replaced |
 | Recurring mistakes, metrics, insights | Not stored: derived on demand from the records above | — |
@@ -144,7 +144,7 @@ Generation happens only when the learner presses a "Generate" button, uses the c
 | Reading preferences, explanation language | `localStorage` | Until cleared |
 | Text sent for reading generation, questions (the text), lookups (selection, sentence, paragraph), vocabulary practice and evaluations | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | Text sent for writing feedback, improved versions, task generation and grammar second opinions | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
-| Speaking recordings | Browser memory; IndexedDB only if the learner ticks "Keep this recording" | Page lifetime by default; otherwise until the learner deletes the recording or the attempt |
+| Speaking recordings | IndexedDB with the attempt, kept by default (opt-out before saving; ≤ 50 MB) | Until the learner deletes the recording or the attempt; an opted-out recording lasts only the page lifetime |
 | Transcript sent for speaking feedback | Groq (via the local server; not logged) | This app: duration of the request only. Groq: per the learner's Groq account settings and Groq's policies |
 | API keys | Server environment only | Never sent to the browser |
 

@@ -100,6 +100,25 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 - Insight history over time (snapshots) and per-category goals chosen by the learner.
 - Automatic periodic backup reminders; backups split into several files for large media libraries.
 
+## M7 — UX redesign ✅
+
+- Navigation, Settings & data, Today, shared hub anatomy, feedback pages that show the learner's work first, targeted practice from each module's own panel, stale-version banner. See `M7_ROADMAP.md` and `M7_FINAL_UX_AUDIT.md`.
+
+## M8 — Media persistence & reliability ✅
+
+- Imported audio is kept in the browser by default (≤ 100 MB; opt-out at creation; up to 500 MB on request), saved in the same transaction as the session; a full disk saves the session without the copy and says so.
+- Speaking recordings are kept with their attempt by default, deletable on their own.
+- Media states everywhere they matter: *Audio saved*, *Audio not saved*, *Needs the file*, *Recording saved / not saved*, *No recording*, *Storage limit reached*; the save control sits under the player.
+- Reconnecting a file can keep it again; a missing copy is detected and never reported as saved.
+- The update banner asks before a reload would lose unsaved audio.
+- No database migration (stores and flags existed since v1/v2); backups unchanged and round-trip kept media.
+
+### Later: media
+
+- A separate media export for libraries over the 100 MB backup limit.
+- Storage status (persisted or not, space used) in Settings & data.
+- Optional File System Access handles (Chromium) to reopen large files without copying them.
+
 ## Later
 
 - Additional target languages (content packs keyed by `LanguageCode`).
