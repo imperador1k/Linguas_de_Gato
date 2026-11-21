@@ -1,56 +1,85 @@
 # Linguas de Gato
 
-A personal, local-first workspace for deliberate language practice. English comes first, aimed at moving from B2 to C1/C2.
+**A personal, local-first workspace I built to take my English from B2 to C1.**
 
-- **Listening** (available): local audio and video with a keyboard-friendly player, **automatic transcription with Groq Whisper**, YouTube through the official IFrame Player API, SRT/WebVTT transcripts that follow playback, replay-line and A-B loops, line-by-line dictation with a word-level diff, and AI comprehension exercises grounded in the transcript. Sessions are saved in the browser (IndexedDB) and survive reloads.
-- **Speaking** (available): B2 and C1 speaking tasks, your own topics and AI-generated B2/C1/C2 tasks, microphone recording, a transcript you review before anything is assessed, detailed AI feedback where every correction quotes your own words, fluency measurements from timestamps, and exercises built from your mistakes. Attempts are saved in the browser.
-- **Writing** (available): AI-generated B2–C2 tasks in 12 formats, a distraction-free editor with autosaved drafts and live word counts, and feedback where every correction quotes your text and errors are kept apart from optional suggestions; an improved version only if you ask for it.
-- **Grammar** (available): AI-generated exercises on 12 advanced areas in six question types, checked against a verified answer key, with rules, explanations of every option, retries and your result history.
-- **Reading** (available): AI-generated texts for your level or your own pasted texts, in a comfortable reading view with saved progress; select any word or phrase to look it up in context, and check your understanding with questions grounded in the text.
-- **Vocabulary** (available): a personal dictionary of the expressions you save, each kept with the sentence you met it in and its meaning there; a simple review schedule and practice built from your own words.
-- **Progress** (available): what you have practised in each module over a chosen period, with every figure defined and its sample size shown; recurring mistakes gathered across modules with the examples behind them; recommendations you can mark done or dismiss; targeted practice generated from your own mistakes; and a full backup and restore of your data. No points, streaks or invented scores.
+I'm a Portuguese speaker. My English was good enough to get by, but not good enough to sound natural, write with precision or follow fast native speech. Language apps didn't help: they reward streaks and points, not real improvement. So I made the tool I actually wanted: one place to listen, read, speak and write in English, get honest feedback on my own words, and see which mistakes keep coming back.
 
-## Requirements
+*Línguas de gato* ("cat's tongues") are thin Portuguese butter biscuits, and a small pun on *línguas*, languages.
 
-- Node.js ≥ 22.12 and npm ≥ 10
-- A recent Chrome, Edge, Firefox or Safari (Speaking needs microphone access and MediaRecorder)
+## Why this project exists
+
+This is a **language-learning project first**. Its purpose was to improve my English through daily, deliberate practice, and the app is the result of that.
+
+- **I designed it and directed it.** I wrote the requirements for every module, decided what "good feedback" means for a learner, reviewed every milestone and tested each feature with my own practice and real AI feedback.
+- **The code was written with an AI pair programmer** (Anthropic's Claude, through Claude Code), working from my specifications one milestone at a time. I'm open about that: the point was never to show off hand-written code, but to build something that genuinely helps me learn.
+- **The project itself became English practice.** Every specification, review and conversation behind it happened in English, so building it trained the same skills it practises.
+
+## What it does
+
+| Module | What you practise |
+| --- | --- |
+| **Listening** | Transcribe your own audio or video (Groq Whisper), or watch YouTube through the official player; follow the transcript, loop hard passages, take line-by-line dictation with a word-level diff, and answer comprehension questions grounded in what was said. |
+| **Reading** | Read texts generated for your level or paste your own; look up any word or phrase *in its sentence*, save it, and check your understanding with questions that quote the text. |
+| **Speaking** | Answer a question out loud, check what the app heard, and get feedback where every correction quotes your own words, plus fluency measurements and exercises built from your mistakes. |
+| **Writing** | Essays, emails, reports and more, with feedback that keeps real errors apart from stylistic suggestions, and an improved version only if you ask for it. |
+| **Grammar** | B2–C2 structures in six question types, checked against a verified answer key, with the rule behind every option. |
+| **Vocabulary** | Your own dictionary of expressions, each kept with the sentence you found it in, a simple review schedule, and practice built from your words. |
+| **Progress** | What you practised, with every number defined; recurring mistakes gathered across modules with the evidence behind them; recommendations and targeted practice. No points, streaks or invented scores. |
+| **Today** | Where you left off, what is due for review and what to practise next. |
+
+### Principles
+
+- **Evidence, not gamification.** Every correction must quote what you actually said or wrote; anything that can't be verified is withheld. No XP, streaks or fake CEFR levels.
+- **Local-first and private.** Everything you practise stays in your browser (IndexedDB). There are no accounts and no server database; backups are files you download.
+- **AI only when you ask.** Nothing is sent to the AI provider until you press a button, and the API key never reaches the browser.
+
+## Tech stack
+
+- **Monorepo** with npm workspaces: `apps/client`, `apps/server`, `packages/shared`
+- **Client:** React 19, Vite, Tailwind CSS v4, React Router
+- **Server:** Fastify 5 on Node.js ≥ 22, proxying Groq (Whisper for transcription, an LLM with strict JSON schemas for feedback and exercise generation)
+- **Shared:** Zod contracts and pure, tested domain logic (text comparison, answer checking, the learning-analytics engine)
+- **Quality:** strict TypeScript, ~740 Vitest unit and API tests, and browser checks with Playwright at desktop, tablet and mobile widths in light and dark themes
 
 ## Getting started
 
+Requirements: Node.js ≥ 22.12, npm ≥ 10, and a recent Chrome, Edge, Firefox or Safari (Speaking needs microphone access).
+
 ```bash
 npm install
-cp apps/server/.env.example apps/server/.env   # needed only for transcription and speaking feedback
+cp apps/server/.env.example apps/server/.env   # add a Groq API key for transcription, feedback and generation
 npm run dev
 ```
 
-Open http://127.0.0.1:5173. The API runs on http://127.0.0.1:3001, and Vite proxies `/api`.
+Open http://127.0.0.1:5173. The API runs on http://127.0.0.1:3001.
 
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Client and server in watch mode |
 | `npm run typecheck` | Strict TypeScript across all workspaces |
-| `npm test` | Unit and API tests (Vitest; no API key needed) |
-| `npm run build` | Production build (shared → server → client) |
-| `npm start` | Serve the production build at http://127.0.0.1:3001 (restart it after each build) |
+| `npm test` | Unit and API tests (no API key needed) |
+| `npm run build` | Production build |
+| `npm start` | Serve the production build at http://127.0.0.1:3001 |
 
-## Groq configuration
+### Groq configuration
 
 1. Create an API key at https://console.groq.com/keys.
-2. Put it in `apps/server/.env`: `GROQ_API_KEY=gsk_…` (the file is git-ignored; the key never reaches the browser).
-3. Restart the server. Listening then shows a **Transcribe** tab, and Speaking can transcribe and give feedback.
+2. Put it in `apps/server/.env` as `GROQ_API_KEY=…` (the file is git-ignored).
+3. Restart the server.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `GROQ_API_KEY` | (empty) | Enables transcription, speaking and writing feedback, grammar second opinions and exercise generation. |
-| `TRANSCRIPTION_MAX_UPLOAD_MB` | `25` | Groq's free-tier limit. Raise it (up to 100) only if your Groq plan accepts larger files. |
-| `TRANSCRIPTION_TIMEOUT_SECONDS` | `300` | Upper bound for one transcription request (10–1800). |
-| `GROQ_CHAT_MODEL` | `openai/gpt-oss-120b` | Chat model for all feedback and exercise generation. |
-| `GROQ_CHAT_RESPONSE_FORMAT` | `auto` | `auto` uses strict JSON Schema for models documented to support it, JSON Object Mode otherwise; `json_schema` or `json_object` force one. |
-| `GROQ_REASONING_EFFORT` | `medium` | `low`, `medium` or `high`; sent only to GPT-OSS models. |
-| `ASSESSMENT_TIMEOUT_SECONDS` | `120` | Upper bound for one feedback or generation request (10–600). |
-| `GROQ_API_BASE_URL` | official endpoint | https only, or http on 127.0.0.1/localhost for a local test stub. |
+| `GROQ_API_KEY` | (empty) | Enables transcription, feedback and exercise generation. |
+| `GROQ_CHAT_MODEL` | `openai/gpt-oss-120b` | Model for feedback and generation. |
+| `TRANSCRIPTION_MAX_UPLOAD_MB` | `25` | Groq's free-tier limit. |
+| `TRANSCRIPTION_TIMEOUT_SECONDS` | `300` | Upper bound for one transcription request. |
+| `GROQ_CHAT_RESPONSE_FORMAT` | `auto` | Strict JSON Schema where supported, JSON Object Mode otherwise. |
+| `GROQ_REASONING_EFFORT` | `medium` | Sent only to GPT-OSS models. |
+| `ASSESSMENT_TIMEOUT_SECONDS` | `120` | Upper bound for one feedback or generation request. |
 
-Transcription formats: FLAC, MP3, MP4, MPEG, MPGA, M4A, OGG, WAV, WebM. Models: **Fast** (`whisper-large-v3-turbo`) and **Higher accuracy** (`whisper-large-v3`). Language: English, or automatic detection.
+## Privacy
+
+Practice data stays in your browser. Text or audio is sent to Groq, through the local server, only when you press the button for that action (Transcribe, Get feedback, Generate, Look up). The full explanation is in the app under **Settings & data → Privacy & AI**.
 
 ## Documentation
 
@@ -58,17 +87,9 @@ Transcription formats: FLAC, MP3, MP4, MPEG, MPGA, M4A, OGG, WAV, WebM. Models: 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Design system](docs/DESIGN_SYSTEM.md)
 - [Roadmap](docs/ROADMAP.md)
+- [UX audit and redesign plan](docs/M7_UX_AUDIT.md)
 
-## Privacy
+## Credits
 
-There are no accounts, no server database and no analytics. Practice data stays in your browser. API keys live only in `apps/server/.env`, which is git-ignored.
-
-- When you click **Transcribe**, the recording is sent through the local server to Groq. The server keeps it only in a temporary file that is deleted when the request ends.
-- When you ask for **speaking feedback**, your confirmed transcript (not the audio) is sent to Groq. It is not logged by this app.
-- When you press **Generate** (a speaking or writing task, listening or grammar exercises), your settings and optional topic text, or the session's transcript text, are sent to Groq. Nothing is generated without that click.
-- Writing drafts stay in your browser. Submitting for feedback, asking for an improved version, or asking for a grammar second opinion sends that text to Groq.
-- Pasted reading texts stay in your browser. Generating questions sends the text; looking up a word sends the selection, its sentence and paragraph; vocabulary practice sends the chosen expressions and their context sentences.
-- Speaking recordings stay in memory unless you tick "Keep this recording"; you can delete a saved recording or a whole attempt at any time.
-- Progress is computed in your browser. **Generate targeted practice** sends only the chosen area's name and description and, if you leave the box ticked, up to five of your own mistakes with their corrections; never your full history.
-- Backups are files you download. They are never uploaded, contain no API keys, and imports are fully validated before anything changes.
-- Groq's handling and retention of what you send are governed by your Groq account settings and Groq's policies, which this app does not control.
+Designed, specified and tested by **Miguel Pereira Santos** ([@imperador1k](https://github.com/imperador1k)).
+Code written with **Claude** (Anthropic) as an AI pair programmer.
