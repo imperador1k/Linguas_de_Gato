@@ -14,8 +14,13 @@ export interface TabItem<T extends string> {
 export const tabId = (base: string, value: string) => `${base}-tab-${value}`;
 export const panelId = (base: string, value: string) => `${base}-panel-${value}`;
 
+/**
+ * No tabindex: every panel in the app starts with focusable content, so the
+ * panel itself would only be an extra, invisible tab stop (WAI-ARIA tabs
+ * pattern: make the panel focusable only when it has nothing focusable).
+ */
 export function tabPanelProps(base: string, value: string) {
-  return { id: panelId(base, value), role: 'tabpanel' as const, 'aria-labelledby': tabId(base, value), tabIndex: 0 };
+  return { id: panelId(base, value), role: 'tabpanel' as const, 'aria-labelledby': tabId(base, value) };
 }
 
 /**
@@ -57,8 +62,9 @@ export function TabList<T extends string>({
   }
 
   return (
-    // Scrolls rather than clipping if the labels outgrow a narrow screen.
-    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cn('flex gap-0.5 overflow-x-auto border-b sm:gap-1', className)}>
+    // Scrolls sideways rather than clipping if the labels outgrow a narrow screen. overflow-y-hidden: the
+    // tabs' -1px overlap with the border would otherwise give the strip a vertical scrollbar.
+    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cn('flex gap-0.5 overflow-x-auto overflow-y-hidden border-b sm:gap-1', className)}>
       {items.map((item, index) => {
         const selected = item.value === value;
         const Icon = item.icon;

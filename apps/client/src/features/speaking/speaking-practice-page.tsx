@@ -156,6 +156,50 @@ function TaskCard({ task, mode }: { task: LoadedTask; mode: SpeakingMode }) {
   );
 }
 
+type Stage = 'prepare' | 'record' | 'listen' | 'review';
+
+const STEPS: ReadonlyArray<{ label: string; stages: readonly Stage[] }> = [
+  { label: 'Task', stages: [] },
+  { label: 'Set up', stages: ['prepare'] },
+  { label: 'Record', stages: ['record', 'listen'] },
+  { label: 'Check transcript', stages: ['review'] },
+  { label: 'Feedback', stages: [] },
+  { label: 'Exercises', stages: [] },
+];
+
+/** Where the learner is in the practice: the order of the page, stated once. */
+function PracticeSteps({ stage }: { stage: Stage }) {
+  const current = STEPS.findIndex((step) => step.stages.includes(stage));
+  return (
+    <nav aria-label="Practice steps" className="mb-6">
+      <ol className="flex flex-wrap items-center gap-x-1 gap-y-2 text-sm">
+        {STEPS.map((step, index) => {
+          const done = index < current;
+          const active = index === current;
+          return (
+            <li key={step.label} className="flex items-center gap-1" aria-current={active ? 'step' : undefined}>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1',
+                  active ? 'bg-accent font-medium text-foreground' : done ? 'text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                <span aria-hidden="true" className={cn('inline-flex size-5 items-center justify-center rounded-full border text-[0.6875rem] tabular-nums', active && 'border-foreground', done && 'border-transparent bg-foreground text-background')}>
+                  {index + 1}
+                </span>
+                {step.label}
+                {done ? <span className="sr-only"> (done)</span> : null}
+              </span>
+              {index < STEPS.length - 1 ? <span aria-hidden="true" className="text-border-strong">·</span> : null}
+            </li>
+          );
+        })}
+      </ol>
+      {current >= 3 ? <p className="mt-2 text-xs text-muted-foreground">Saving the transcript opens the attempt, where feedback and exercises follow.</p> : null}
+    </nav>
+  );
+}
+
 function PracticeSettings({
   mode,
   onModeChange,
@@ -287,7 +331,7 @@ export function SpeakingPracticePage() {
   }, [source, topicId, storage]);
 
   const busy = isTranscriptionBusy(job.state) || saving;
-  const stage: 'prepare' | 'record' | 'listen' | 'review' = transcription
+  const stage: Stage = transcription
     ? 'review'
     : recording
       ? 'listen'
@@ -389,8 +433,31 @@ export function SpeakingPracticePage() {
         </Notice>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <PracticeSteps stage={stage} />
+
+      {/* Reading order is the practice order: the task, then set-up, recording and the transcript check. */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
+        <div className="min-w-0 lg:sticky lg:top-6">
+          <TaskCard task={task} mode={mode} />
+        </div>
+
         <div className="flex min-w-0 flex-col gap-6">
+          {stage === 'prepare' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Set up</CardTitle>
+                <CardDescription>Choose how to answer before you start recording.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-5 pt-1">
+                <PracticeSettings mode={mode} onModeChange={setMode} target={target} onTargetChange={setTarget} disabled={false} />
+                <SpeakingPrivacyNote />
+              </CardContent>
+            </Card>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {mode === 'guided' ? 'Guided' : 'Free'} · suggested {formatTimestamp(target)}
+            </p>
+          )}
           {stage === 'review' ? (
             <TranscriptReview
               audioUrl={recordingUrl}
@@ -449,18 +516,6 @@ export function SpeakingPracticePage() {
             <Notice tone="error" role="alert">
               {saveError}
             </Notice>
-          ) : null}
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-6">
-          <TaskCard task={task} mode={mode} />
-          {stage === 'prepare' ? (
-            <Card>
-              <CardContent className="flex flex-col gap-5 pt-5 sm:pt-6">
-                <PracticeSettings mode={mode} onModeChange={setMode} target={target} onTargetChange={setTarget} disabled={false} />
-                <SpeakingPrivacyNote />
-              </CardContent>
-            </Card>
           ) : null}
         </div>
       </div>

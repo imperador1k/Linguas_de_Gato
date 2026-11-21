@@ -5,3 +5,4 @@ export * from './insights.js';
 export * from './training.js';
 export * from './recommendations.js';
 export * from './backup.js';
+export * from './today.js';

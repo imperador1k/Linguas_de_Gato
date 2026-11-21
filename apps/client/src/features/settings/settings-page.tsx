@@ -31,7 +31,7 @@ export function SettingsPage() {
       <div className="grid gap-8 lg:grid-cols-[13rem_minmax(0,1fr)]">
         {/* min-w-0: as a grid item the strip would otherwise grow to its content and overflow narrow screens. */}
         <nav aria-label="Settings sections" className="min-w-0 lg:sticky lg:top-6 lg:self-start">
-          <ul className="-mx-1 flex gap-0.5 overflow-x-auto border-b px-1 lg:mx-0 lg:flex-col lg:gap-0.5 lg:border-b-0 lg:px-0">
+          <ul className="-mx-1 flex gap-0.5 overflow-x-auto overflow-y-hidden border-b px-1 lg:mx-0 lg:flex-col lg:gap-0.5 lg:border-b-0 lg:px-0">
             {SECTIONS.map(({ id, label, icon: Icon }) => (
               <li key={id} className="shrink-0">
                 <Link

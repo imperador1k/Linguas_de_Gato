@@ -5,6 +5,8 @@ import {
   type LearningSnapshot,
   type RecommendationState,
   type TrainingSession,
+  type WritingDraft,
+  type WritingTaskRecord,
 } from '@ldg/shared';
 import { STORES } from '@/lib/storage/app-database';
 import { createFeatureStorage } from '@/lib/storage/feature-storage';
@@ -26,6 +28,9 @@ export interface LearningData {
   readonly snapshot: LearningSnapshot;
   readonly recommendationStates: RecommendationState[];
   readonly trainingSessions: TrainingSession[];
+  /** For Today's "continue" list: unfinished drafts and the tasks they belong to. */
+  readonly writingDrafts: WritingDraft[];
+  readonly writingTasks: WritingTaskRecord[];
   /** Records skipped because they failed validation (outdated or corrupt): reported, never guessed at. */
   readonly unreadable: number;
 }
@@ -47,7 +52,7 @@ const SNAPSHOT_STORES = {
 } as const satisfies Record<keyof LearningSnapshot, keyof typeof BACKUP_STORES>;
 
 export async function loadLearningData(database: IDBDatabase): Promise<LearningData> {
-  const names = [...Object.values(SNAPSHOT_STORES), STORES.recommendationStates, STORES.trainingSessions];
+  const names = [...Object.values(SNAPSHOT_STORES), STORES.recommendationStates, STORES.trainingSessions, STORES.writingDrafts, STORES.writingTasks];
   let transaction: IDBTransaction;
   try {
     transaction = database.transaction(names, 'readonly');
@@ -70,6 +75,8 @@ export async function loadLearningData(database: IDBDatabase): Promise<LearningD
     snapshot,
     recommendationStates: parse<RecommendationState>('recommendationStates', rows[entries.length] ?? []),
     trainingSessions: parse<TrainingSession>('trainingSessions', rows[entries.length + 1] ?? []),
+    writingDrafts: parse<WritingDraft>('writingDrafts', rows[entries.length + 2] ?? []),
+    writingTasks: parse<WritingTaskRecord>('writingTasks', rows[entries.length + 3] ?? []),
     unreadable,
   };
 }

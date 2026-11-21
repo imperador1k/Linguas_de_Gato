@@ -3,7 +3,7 @@
 ## Status
 
 - **M7.1 (done, uncommitted):** Step 0 (baseline screenshots in `.playwright-mcp/m7/before-*`, truthful Overview, semantic colours), the shared foundations of Step 1 that had real duplication (`PageHeader` back slot, `TabList`, status primitives, `EmptyState`, `HelpDisclosure`, `PrivacyNote`, `caution` tokens) and Step 2 (navigation, tablet rail, mobile drawer, Settings & data, Progress section routes with legacy redirects). Not yet built: `FilterBar`, `CreationSheet`, `Toast`, `KbdLegend` (they belong with the hub redesigns).
-- **M7.2:** Step 3 (Today) and Step 4 (Speaking hub pilot).
+- **M7.2 (done, uncommitted):** Step 3, Today (continue learning, recommended next, vocabulary reviews, recent activity, quick start; honest first use), built on a tested shared `todayWork` and the M6 engine. Step 4, Speaking hub pilot: Topics and History views, one-row filters with search, curated and personal topics in one master/detail list with full-prompt preview (inline on phones), the shared `SidePanel` for New topic (Generate with AI / Write your own) and editing, and a practice page ordered Task → Set up → Record → Check transcript → Feedback → Exercises.
 - **M7.3:** Steps 5–7.
 
 Incremental plan for `M7_DESIGN_PROPOSAL.md`. Each step ships on its own, keeps every feature working and is verified with `npm run typecheck && npm test && npm run build` plus Playwright at 1440, 1280, 820, 390 and 375 px in light and dark themes.

@@ -19,7 +19,7 @@ import {
   type VocabularyItem,
 } from '@ldg/shared';
 import { LoaderCircle, RefreshCw, Sparkles, X } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { AutoGrowTextarea } from '@/components/ui/auto-grow-textarea';
 import { Button } from '@/components/ui/button';
@@ -75,6 +75,10 @@ export interface TopicGeneratorProps {
   /** Called with the saved topic; `practise` is true for "Save and practise". */
   readonly onSaved: (topic: CustomTopic, practise: boolean) => void;
   readonly onClose: () => void;
+  /** Inside the creation side panel: no own frame or close button (the panel has them). */
+  readonly embedded?: boolean;
+  /** Reports unsaved work (a running generation or an unsaved preview) so the container can protect it. */
+  readonly onDirtyChange?: (dirty: boolean) => void;
 }
 
 /**
@@ -83,7 +87,7 @@ export interface TopicGeneratorProps {
  * it, and saves it as a personal topic. Nothing is sent until they press a
  * generate button, and nothing is saved until they press save.
  */
-export function TopicGenerator({ storage, onSaved, onClose }: TopicGeneratorProps) {
+export function TopicGenerator({ storage, onSaved, onClose, embedded = false, onDirtyChange }: TopicGeneratorProps) {
   const job = useGenerationJob();
   const [settings, setSettings] = useState<Settings>({
     level: 'C1',
@@ -113,6 +117,9 @@ export function TopicGenerator({ storage, onSaved, onClose }: TopicGeneratorProp
   };
 
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings((current) => ({ ...current, [key]: value }));
+
+  const dirty = running || draft !== null;
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
   async function generate() {
     setSaveError(null);
@@ -165,19 +172,23 @@ export function TopicGenerator({ storage, onSaved, onClose }: TopicGeneratorProp
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-lg border px-4 py-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 text-base font-medium">
-            <Sparkles aria-hidden="true" className="size-4 text-brand" />
-            Generate a speaking task
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">Choose what you want to practise. You can preview, regenerate and edit the task before saving it.</p>
+    <div className={cn('flex flex-col gap-5', !embedded && 'rounded-lg border px-4 py-4')}>
+      {embedded ? (
+        <p className="text-sm text-muted-foreground">Choose what you want to practise. You can preview, regenerate and edit the task before saving it.</p>
+      ) : (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="flex items-center gap-2 text-base font-medium">
+              <Sparkles aria-hidden="true" className="size-4 text-brand" />
+              Generate a speaking task
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">Choose what you want to practise. You can preview, regenerate and edit the task before saving it.</p>
+          </div>
+          <Button variant="ghost" size="icon-sm" aria-label="Close the generator" onClick={onClose} disabled={running || saving}>
+            <X aria-hidden="true" />
+          </Button>
         </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Close the generator" onClick={onClose} disabled={running || saving}>
-          <X aria-hidden="true" />
-        </Button>
-      </div>
+      )}
 
       <div className="flex flex-col gap-5">
         <ChoiceGroup

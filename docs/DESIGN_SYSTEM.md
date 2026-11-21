@@ -81,6 +81,9 @@ Terracotta never signals status: it is identity, focus, the active navigation it
 | Help | `HelpDisclosure` | "How it works" explanations are a native `<details>`, open until the learner closes them once (remembered per device under `ldg.help.*`). |
 | Privacy line | `PrivacyNote` | One sentence where data is about to be sent, plus a link to Settings → Privacy & AI, which holds the full explanation. |
 | Confirmations | `ConfirmDialog` | Destructive or irreversible actions only. |
+| Creation side panel (M7.2) | `SidePanel` (`components/ui/side-panel.tsx`) | Where something new is made without leaving the page: native `<dialog>` on the right (full screen on phones), title and description, source choice as tabs inside, the module's own form and preview. With `dirty`, Escape, the close button and the backdrop first ask "Discard your changes?". Focus returns to the opener. |
+| View switch with URL (M7.2) | `TabList` + `?view=` | Hub views (Speaking: Topics / History) live in the URL so they survive going back from a detail page. |
+| Master/detail list (M7.2) | Speaking `TopicsView` | Desktop: list scrolls beside a sticky preview that always shows the selected item in full. Below 1024 px: the preview opens in place under its row (`aria-expanded`). |
 
 ## Navigation (M7.1)
 

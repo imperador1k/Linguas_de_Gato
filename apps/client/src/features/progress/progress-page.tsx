@@ -75,7 +75,7 @@ export function ProgressPage() {
     <div>
       <PageHeader eyebrow="Your progress" title={section === 'overview' ? 'Progress' : activeLabel} description="What you have practised and which mistakes keep coming back, with the evidence behind every figure. No points, no streaks, no invented scores." />
       <nav aria-label="Progress sections" className="mb-8">
-        <ul className="-mx-1 flex gap-0.5 overflow-x-auto border-b px-1 sm:gap-1">
+        <ul className="-mx-1 flex gap-0.5 overflow-x-auto overflow-y-hidden border-b px-1 sm:gap-1">
           {SECTIONS.map((candidate) => (
             <li key={candidate.id} className="shrink-0">
               <NavLink
