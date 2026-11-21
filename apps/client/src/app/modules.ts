@@ -1,9 +1,11 @@
 import {
   BookOpenText,
   ChartLine,
+  CircleAlert,
   Headphones,
   Mic,
   PenLine,
+  Sparkles,
   SpellCheck,
   WholeWord,
   type LucideIcon,
@@ -13,7 +15,8 @@ export type ModuleId = 'listening' | 'speaking' | 'writing' | 'grammar' | 'readi
 
 export type ModuleStatus = 'available' | 'planned';
 
-export type ModuleGroup = 'practice' | 'foundations' | 'review';
+/** Navigation groups (docs/M7_INFORMATION_ARCHITECTURE.md): practise skills, study language, review progress. */
+export type ModuleGroup = 'practise' | 'language' | 'progress';
 
 export interface LearningModule {
   readonly id: ModuleId;
@@ -22,97 +25,112 @@ export interface LearningModule {
   readonly icon: LucideIcon;
   readonly group: ModuleGroup;
   readonly status: ModuleStatus;
-  /** Roadmap milestone in which the module becomes usable (see docs/ROADMAP.md). */
+  /** Roadmap milestone in which the module became usable (see docs/ROADMAP.md). */
   readonly milestone: string;
+  /** One sentence: what the learner does here. */
   readonly summary: string;
-  readonly highlights: readonly string[];
+  /** Planned modules only: what the module will offer. */
+  readonly highlights?: readonly string[];
 }
 
 export const MODULE_GROUP_LABELS: Readonly<Record<ModuleGroup, string>> = {
-  practice: 'Practice',
-  foundations: 'Foundations',
-  review: 'Review',
+  practise: 'Practise',
+  language: 'Language',
+  progress: 'Your progress',
 };
 
+export const MODULE_GROUP_ORDER: readonly ModuleGroup[] = ['practise', 'language', 'progress'];
+
+/** Input skills before output skills, in the order evidence flows. */
 export const MODULES: readonly LearningModule[] = [
   {
     id: 'listening',
     label: 'Listening',
     path: '/listening',
     icon: Headphones,
-    group: 'practice',
+    group: 'practise',
     status: 'available',
     milestone: 'M2',
-    summary:
-      'Work through authentic audio and video at your own pace: transcribe it automatically, follow the transcript, loop hard passages and test yourself with dictation.',
-    highlights: ['Automatic transcription', 'Local files and YouTube', 'Replay line and A-B loops', 'Dictation with word-level feedback', 'Comprehension exercises from the transcript'],
-  },
-  {
-    id: 'speaking',
-    label: 'Speaking',
-    path: '/speaking',
-    icon: Mic,
-    group: 'practice',
-    status: 'available',
-    milestone: 'M3',
-    summary: 'Answer a question out loud, check the transcript, and get evidence-based feedback with exercises built from your mistakes.',
-    highlights: ['B2 and C1 speaking tasks', 'AI-generated tasks up to C2', 'Reviewed Whisper transcript', 'Feedback tied to your own words', 'Fluency measurements'],
-  },
-  {
-    id: 'writing',
-    label: 'Writing',
-    path: '/writing',
-    icon: PenLine,
-    group: 'practice',
-    status: 'available',
-    milestone: 'M4',
-    summary: 'Write essays, emails, reports and more, then study feedback where every correction quotes your text and errors are kept apart from suggestions.',
-    highlights: ['B2–C2 tasks in 12 formats', 'Autosaved drafts', 'Evidence-based corrections', 'Optional improved version'],
+    summary: 'Transcribe audio or video, loop hard passages and test yourself with dictation.',
   },
   {
     id: 'reading',
     label: 'Reading',
     path: '/reading',
     icon: BookOpenText,
-    group: 'practice',
+    group: 'practise',
     status: 'available',
     milestone: 'M5',
-    summary: 'Read texts written for your level or your own, look up expressions in context, and check your understanding against the text.',
-    highlights: ['Generated or pasted texts', 'Comfortable reading view', 'Contextual lookups', 'Evidence-based questions'],
+    summary: 'Read texts at your level, look up expressions in context and check your understanding.',
+  },
+  {
+    id: 'speaking',
+    label: 'Speaking',
+    path: '/speaking',
+    icon: Mic,
+    group: 'practise',
+    status: 'available',
+    milestone: 'M3',
+    summary: 'Answer a question out loud and get feedback tied to your own words.',
+  },
+  {
+    id: 'writing',
+    label: 'Writing',
+    path: '/writing',
+    icon: PenLine,
+    group: 'practise',
+    status: 'available',
+    milestone: 'M4',
+    summary: 'Write essays, emails and reports, with errors kept apart from suggestions.',
   },
   {
     id: 'grammar',
     label: 'Grammar',
     path: '/grammar',
     icon: SpellCheck,
-    group: 'foundations',
+    group: 'language',
     status: 'available',
     milestone: 'M4',
-    summary: 'Targeted exercises on the structures that separate B2 from C1/C2, checked against a verified answer key.',
-    highlights: ['12 advanced grammar areas', 'Six question types', 'Rules and distractor explanations', 'Retry with result history'],
+    summary: 'Targeted exercises on B2–C2 structures, checked against a verified key.',
   },
   {
     id: 'vocabulary',
     label: 'Vocabulary',
     path: '/vocabulary',
     icon: WholeWord,
-    group: 'foundations',
+    group: 'language',
     status: 'available',
     milestone: 'M5',
-    summary: 'Keep words and collocations together with the sentences where you found them, review them on schedule and practise them in new contexts.',
-    highlights: ['Saved with their context', 'Several meanings per expression', 'Simple review schedule', 'Practice from your own words'],
+    summary: 'Your expressions with their context, reviewed on schedule and practised in new sentences.',
   },
   {
     id: 'progress',
     label: 'Progress',
     path: '/progress',
     icon: ChartLine,
-    group: 'review',
+    group: 'progress',
     status: 'available',
     milestone: 'M6',
-    summary: 'See what you have practised and which mistakes keep coming back, with the evidence behind each one. Evidence, not points.',
-    highlights: ['Measured activity, never guessed', 'Recurring mistakes with examples', 'Targeted practice from your errors', 'Full backup and restore'],
+    summary: 'What you have practised and which mistakes keep coming back, with the evidence.',
   },
+];
+
+/** The Progress area's own sections, listed under "Your progress" in the navigation. */
+export interface NavLinkItem {
+  readonly label: string;
+  readonly path: `/${string}`;
+  readonly icon: LucideIcon;
+  /** Match the path exactly (for parents of other items). */
+  readonly end?: boolean;
+  /** Also show as current on these related pages (without claiming aria-current). */
+  readonly alsoActive?: (pathname: string) => boolean;
+}
+
+export const PROGRESS_NAV: readonly NavLinkItem[] = [
+  // Recommendations and targeted practice are Progress pages without their own navigation item.
+  { label: 'Overview', path: '/progress', icon: ChartLine, end: true, alsoActive: (pathname) => pathname === '/progress/recommendations' || pathname === '/progress/training' },
+  { label: 'Skills', path: '/progress/skills', icon: Sparkles },
+  { label: 'Mistakes', path: '/progress/mistakes', icon: CircleAlert },
 ];
 
 export function getModule(id: ModuleId): LearningModule {
@@ -123,4 +141,10 @@ export function getModule(id: ModuleId): LearningModule {
 
 export function findModuleByPath(pathname: string): LearningModule | undefined {
   return MODULES.find((candidate) => pathname === candidate.path || pathname.startsWith(`${candidate.path}/`));
+}
+
+/** Document title for any route: module name, Settings, or the app alone. */
+export function titleForPath(pathname: string): string | null {
+  if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'Settings & data';
+  return findModuleByPath(pathname)?.label ?? null;
 }

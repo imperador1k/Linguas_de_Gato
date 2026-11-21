@@ -15,13 +15,13 @@ import {
   type VocabularyPracticeSet,
   type VocabularyQuestion,
 } from '@ldg/shared';
-import { ArrowLeft, CircleCheck, CircleDashed, CircleX, LoaderCircle, MessageSquareText, RotateCcw, Trash } from 'lucide-react';
+import { CircleCheck, CircleDashed, CircleX, LoaderCircle, MessageSquareText, RotateCcw, Trash } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { AutoGrowTextarea } from '@/components/ui/auto-grow-textarea';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { FIELD_CLASS, SELECT_CLASS } from '@/components/ui/choice-group';
 import { ConfirmDialog } from '@/components/ui/dialog';
@@ -331,15 +331,10 @@ export function VocabularyPracticePage() {
     if (immediate) void saverRef.current?.flush();
   }
 
-  const back = (
-    <Link to="/vocabulary" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      Vocabulary
-    </Link>
-  );
+  const back = { to: '/vocabulary', label: 'Vocabulary' } as const;
 
   if (set === null) return null;
-  if (set === 'missing') return <PageHeader eyebrow="Vocabulary practice" title="Practice set not found" description={error ?? 'It may have been deleted.'} actions={back} />;
+  if (set === 'missing') return <PageHeader eyebrow="Vocabulary practice" title="Practice set not found" description={error ?? 'It may have been deleted.'} back={back} />;
 
   const checked = set.checkedAt !== null;
   const score = scoreVocabularySet(set);
@@ -354,11 +349,11 @@ export function VocabularyPracticePage() {
   return (
     <>
       <PageHeader
+        back={back}
         eyebrow="Vocabulary practice"
         title={`${set.questions.length} questions on ${set.entryIds.length} expression${set.entryIds.length === 1 ? '' : 's'}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {back}
             <Button variant="ghost" size="icon" aria-label="Delete practice set" title="Delete" onClick={() => setConfirm('delete')}>
               <Trash aria-hidden="true" />
             </Button>

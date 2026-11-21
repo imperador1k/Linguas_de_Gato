@@ -1,27 +1,19 @@
 import { withoutSense, type VocabularyEntry, type VocabularySense } from '@ldg/shared';
-import { ArrowLeft, Trash } from 'lucide-react';
+import { Trash } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { describeStorageFailure } from '@/lib/storage/feature-storage';
-import { cn } from '@/lib/utils';
 import { vocabularyStorage } from './storage/vocabulary-repository';
 import { SenseDetail, SourceLink } from './vocabulary-detail';
 import { dateFormatter, describeDue, KIND_LABELS, STATUS_LABELS } from './vocabulary-labels';
 
-function BackLink() {
-  return (
-    <Link to="/vocabulary" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      Vocabulary
-    </Link>
-  );
-}
+const BACK = { to: '/vocabulary', label: 'Vocabulary' } as const;
 
 export function VocabularyEntryPage() {
   const { entryId = '' } = useParams();
@@ -48,7 +40,7 @@ export function VocabularyEntryPage() {
   }, [storage, entryId]);
 
   if (entry === null) return null;
-  if (entry === 'missing') return <PageHeader eyebrow="Vocabulary" title="Expression not found" description={error ?? 'It may have been deleted.'} actions={<BackLink />} />;
+  if (entry === 'missing') return <PageHeader eyebrow="Vocabulary" title="Expression not found" description={error ?? 'It may have been deleted.'} back={BACK} />;
 
   async function confirmDelete() {
     if (!storage || !pending || entry === null || entry === 'missing') return;
@@ -76,13 +68,12 @@ export function VocabularyEntryPage() {
   const now = Date.now();
   return (
     <>
-      <PageHeader
+      <PageHeader back={BACK}
         eyebrow={KIND_LABELS[entry.kind]}
         title={<span className="font-serif">{entry.expression}</span>}
         description={entry.lemma.toLowerCase() !== entry.expression.toLowerCase() ? `Dictionary form: ${entry.lemma}` : undefined}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <BackLink />
             <Button variant="ghost" size="icon" aria-label="Delete this expression" title="Delete" onClick={() => setPending({ kind: 'entry' })}>
               <Trash aria-hidden="true" />
             </Button>

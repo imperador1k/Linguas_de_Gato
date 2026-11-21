@@ -143,10 +143,18 @@ export const router = createBrowserRouter([
         },
       },
       {
-        path: 'progress',
+        // `/progress?section=…` URLs from before M7.1 are redirected inside the page.
+        path: 'progress/:section?',
         lazy: async () => {
           const { ProgressPage } = await import('@/features/progress/progress-page');
           return { Component: ProgressPage };
+        },
+      },
+      {
+        path: 'settings/:section?',
+        lazy: async () => {
+          const { SettingsPage } = await import('@/features/settings/settings-page');
+          return { Component: SettingsPage };
         },
       },
       ...plannedRoutes,

@@ -10,8 +10,9 @@ import { ArrowRight, CircleCheck, CircleDashed, Lightbulb } from 'lucide-react';
 import { useId, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CorrectionKindBadge, LevelLabel } from '@/components/ui/status';
+import { TabList, tabPanelProps, type TabItem } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { LevelLabel } from '../speaking/assessment-view';
 import { DIMENSION_LABELS, ERROR_CATEGORY_LABELS } from './writing-labels';
 
 const PRIORITY_LABELS = { high: 'High priority', medium: 'Medium priority', low: 'Low priority' } as const;
@@ -44,8 +45,9 @@ export function AnnotatedText({
             aria-pressed={activeId === correction.id}
             className={cn(
               'cursor-pointer rounded-sm px-0.5 text-left underline underline-offset-4 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-ring',
-              isError ? 'decoration-destructive decoration-2 hover:bg-destructive-subtle' : 'decoration-brand decoration-dotted decoration-2 hover:bg-brand-subtle',
-              activeId === correction.id && (isError ? 'bg-destructive-subtle' : 'bg-brand-subtle'),
+              // Errors: solid red underline. Suggestions: dotted neutral underline, so they never read as mistakes.
+              isError ? 'decoration-destructive decoration-2 hover:bg-destructive-subtle' : 'decoration-muted-foreground decoration-dotted decoration-2 hover:bg-accent',
+              activeId === correction.id && (isError ? 'bg-destructive-subtle' : 'bg-accent'),
             )}
           >
             {piece.text}
@@ -65,7 +67,7 @@ function CorrectionCard({ correction, active, onSelect }: { correction: WritingC
       onClick={onSelect}
     >
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
-        <Badge variant={isError ? 'destructive' : 'brand'}>{isError ? 'Error' : 'Suggestion'}</Badge>
+        <CorrectionKindBadge kind={correction.kind} />
         <Badge variant="neutral">{ERROR_CATEGORY_LABELS[correction.category]}</Badge>
         <span className="text-muted-foreground">{PRIORITY_LABELS[correction.priority]}</span>
       </div>
@@ -214,34 +216,16 @@ export function TextTabs({
   children: ReactNode;
 }) {
   const id = useId();
-  const tabs: Array<[TextView, string]> = [
-    ['annotated', 'Corrections'],
-    ['original', 'Your text'],
-    ['fixed', 'Errors fixed'],
-    ['improved', improvedAvailable ? 'Improved version' : 'Improved version (optional)'],
+  const tabs: Array<TabItem<TextView>> = [
+    { value: 'annotated', label: 'Corrections' },
+    { value: 'original', label: 'Your text' },
+    { value: 'fixed', label: 'Errors fixed' },
+    { value: 'improved', label: improvedAvailable ? 'Improved version' : 'Improved version (optional)' },
   ];
   return (
     <div>
-      <div role="tablist" aria-label="Text view" className="-mx-1 flex gap-1 overflow-x-auto border-b px-1">
-        {tabs.map(([value, label]) => (
-          <button
-            key={value}
-            type="button"
-            role="tab"
-            id={`${id}-${value}`}
-            aria-selected={view === value}
-            aria-controls={`${id}-panel`}
-            onClick={() => onChange(value)}
-            className={cn(
-              '-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm whitespace-nowrap transition-colors duration-150',
-              view === value ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-${view}`} className="pt-5">
+      <TabList items={tabs} value={view} onChange={onChange} label="Text view" idBase={id} />
+      <div {...tabPanelProps(id, view)} className="pt-5 outline-none">
         {children}
       </div>
     </div>

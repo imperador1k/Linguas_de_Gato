@@ -36,6 +36,9 @@
   --destructive-subtle: #fbeae8;
   --success: #2f6b45;
   --success-subtle: #e6f0e9;
+  /* Caution: "work on this", never "wrong". Levels such as Developing use it; red is for errors only. */
+  --caution: #8a5300;
+  --caution-subtle: #f6ead3;
   --border: #e3ded3;
   --border-strong: #cfc8ba;
   --input: #d9d3c6;
@@ -65,6 +68,8 @@
   --destructive-subtle: #3a1d1a;
   --success: #7cc092;
   --success-subtle: #1b2c21;
+  --caution: #e2b45f;
+  --caution-subtle: #30281a;
   --border: #2e2c28;
   --border-strong: #3d3a34;
   --input: #3a3731;
@@ -98,6 +103,8 @@
   --color-destructive-subtle: var(--destructive-subtle);
   --color-success: var(--success);
   --color-success-subtle: var(--success-subtle);
+  --color-caution: var(--caution);
+  --color-caution-subtle: var(--caution-subtle);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-input: var(--input);

@@ -3,21 +3,14 @@ import {
   formatTimestamp,
   type AssessmentDimension,
   type AssessmentIssue,
-  type AssessmentLevel,
   type IssueCategory,
   type SpeakingAssessment,
 } from '@ldg/shared';
-import { CircleAlert, CircleCheck, CircleDot, Play } from 'lucide-react';
+import { CircleCheck, Play } from 'lucide-react';
 import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-
-const LEVELS: Readonly<Record<AssessmentLevel, { label: string; icon: typeof CircleCheck; className: string }>> = {
-  strong: { label: 'Strong', icon: CircleCheck, className: 'text-success' },
-  developing: { label: 'Developing', icon: CircleDot, className: 'text-brand' },
-  needs_attention: { label: 'Needs attention', icon: CircleAlert, className: 'text-destructive' },
-};
+import { LevelLabel } from '@/components/ui/status';
 
 const CATEGORY_LABELS: Readonly<Record<IssueCategory, string>> = {
   grammar: 'Grammar',
@@ -27,16 +20,6 @@ const CATEGORY_LABELS: Readonly<Record<IssueCategory, string>> = {
   task: 'Task',
 };
 
-/** Icon + word, never colour alone. */
-export function LevelLabel({ level }: { level: AssessmentLevel }) {
-  const { label, icon: Icon, className } = LEVELS[level];
-  return (
-    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', className)}>
-      <Icon aria-hidden="true" className="size-4" />
-      {label}
-    </span>
-  );
-}
 
 function DimensionCard({ title, dimension }: { title: string; dimension: AssessmentDimension }) {
   return (

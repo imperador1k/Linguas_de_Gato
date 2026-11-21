@@ -1,5 +1,5 @@
 import { dueEntries, scheduleReview, type ReviewRating, type VocabularyEntry } from '@ldg/shared';
-import { ArrowLeft, CircleCheck, Eye } from 'lucide-react';
+import { CircleCheck, Eye } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
@@ -7,7 +7,6 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Notice } from '@/components/ui/notice';
 import { describeStorageFailure } from '@/lib/storage/feature-storage';
-import { cn } from '@/lib/utils';
 import { vocabularyStorage } from './storage/vocabulary-repository';
 import { HighlightedContext, SenseDetail, SourceLink } from './vocabulary-detail';
 import { KIND_LABELS } from './vocabulary-labels';
@@ -57,12 +56,7 @@ export function VocabularyReviewPage() {
     }
   }
 
-  const back = (
-    <Link to="/vocabulary" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      Vocabulary
-    </Link>
-  );
+  const back = { to: '/vocabulary', label: 'Vocabulary' } as const;
 
   if (queue === null) return null;
   const entry = queue[index];
@@ -70,7 +64,7 @@ export function VocabularyReviewPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Vocabulary review" title={entry ? `${index + 1} of ${total}` : 'Review complete'} actions={back} />
+      <PageHeader eyebrow="Vocabulary review" title={entry ? `${index + 1} of ${total}` : 'Review complete'} back={back} />
       {error ? (
         <Notice tone="error" role="alert" className="mb-6">
           {error}
@@ -90,7 +84,9 @@ export function VocabularyReviewPage() {
             ) : (
               <p className="text-sm text-muted-foreground">New and difficult expressions come back first; known ones space out over weeks.</p>
             )}
-            {back}
+            <Link to="/vocabulary" className={buttonVariants({ variant: 'secondary' })}>
+              Back to Vocabulary
+            </Link>
           </CardContent>
         </Card>
       ) : (

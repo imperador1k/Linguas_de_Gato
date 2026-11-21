@@ -30,7 +30,7 @@ export function PlannedModulePage({ moduleId }: { moduleId: ModuleId }) {
         </div>
         <h2 className="mt-6 text-sm font-medium">What it will include</h2>
         <ul className="mt-3 flex flex-col gap-2 text-[0.9375rem] text-muted-foreground">
-          {learningModule.highlights.map((highlight) => (
+          {(learningModule.highlights ?? []).map((highlight) => (
             <li key={highlight} className="flex items-center gap-3">
               <span aria-hidden="true" className="size-1 rounded-full bg-brand" />
               {highlight}

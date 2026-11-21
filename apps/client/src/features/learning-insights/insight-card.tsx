@@ -5,7 +5,8 @@ import { Sparkline } from '@/features/progress/activity-chart';
 import { CONFIDENCE_LABELS, EVIDENCE_LABELS, KIND_LABELS, MODULE_LABELS, STATUS_LABELS, TREND_LABELS, formatDate } from '@/features/progress/format';
 import { Badge } from '@/components/ui/badge';
 
-const STATUS_VARIANT = { recurring: 'destructive', preliminary: 'outline', improving: 'success', strength: 'success', insufficient: 'neutral' } as const;
+// A recurring pattern is something to work on, not an error in itself: caution, not red.
+const STATUS_VARIANT = { recurring: 'caution', preliminary: 'outline', improving: 'success', strength: 'success', insufficient: 'neutral' } as const;
 
 export function EvidenceList({ observations }: { observations: readonly LearningObservation[] }) {
   if (observations.length === 0) return <p className="text-sm text-muted-foreground">No examples recorded.</p>;
@@ -106,7 +107,7 @@ export function InsightCard({ insight, observations, allObservations, now }: { i
           <p className="text-xs text-muted-foreground">{info.description}</p>
           <EvidenceList observations={observations} />
           {trainable ? (
-            <Link to={`/progress?section=training&category=${insight.category}`} className="w-fit text-sm font-medium text-brand hover:underline">
+            <Link to={`/progress/training?category=${insight.category}`} className="w-fit text-sm font-medium text-brand hover:underline">
               Practise {info.label.toLowerCase()} with targeted exercises
             </Link>
           ) : null}

@@ -1,26 +1,18 @@
 import { formatBytes, type ListeningSession } from '@ldg/shared';
-import { ArrowLeft, BookOpenText, CircleCheck, PencilLine, Trash, X } from 'lucide-react';
+import { BookOpenText, CircleCheck, PencilLine, Trash, X } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { ConfirmDialog, Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
-import { cn } from '@/lib/utils';
 import { LocalSessionView, YouTubeSessionView } from './session/session-views';
 import { useListeningSession } from './session/use-listening-session';
 import { describeTranscriptSource } from './transcription/transcribed-session';
 
-function BackLink() {
-  return (
-    <Link to="/listening" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      All sessions
-    </Link>
-  );
-}
+const BACK = { to: '/listening', label: 'Listening' } as const;
 
 function describeSource(session: ListeningSession): string {
   const { source } = session;
@@ -139,7 +131,7 @@ export function ListeningSessionPage() {
               ? 'It may have been deleted, or it was saved in another browser.'
               : state.message
           }
-          actions={<BackLink />}
+          back={BACK}
         />
       </>
     );
@@ -165,13 +157,12 @@ export function ListeningSessionPage() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={BACK}
         eyebrow="Listening session"
         title={<span className="break-words">{session.title}</span>}
         description={describeSource(session)}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <BackLink />
             <Button variant="ghost" size="icon" aria-label="Rename session" title="Rename" onClick={() => setRenaming(true)}>
               <PencilLine aria-hidden="true" />
             </Button>

@@ -1,12 +1,13 @@
 import type { ReadingTextRecord } from '@ldg/shared';
-import { ArrowLeft, CircleCheck, ListChecks, Search, SlidersHorizontal } from 'lucide-react';
+import { CircleCheck, ListChecks, Search, SlidersHorizontal } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { ChoiceGroup } from '@/components/ui/choice-group';
 import { Notice } from '@/components/ui/notice';
+import { TabList, tabPanelProps } from '@/components/ui/tabs';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { describeStorageFailure } from '@/lib/storage/feature-storage';
 import { cn } from '@/lib/utils';
@@ -17,14 +18,7 @@ import { SIZE_CLASSES, SPACING_CLASSES, WIDTH_CLASSES, useReadingPreferences } f
 import { readingStorage } from './storage/reading-repository';
 import { useTextSelection, type TextSelection } from './use-text-selection';
 
-function BackLink() {
-  return (
-    <Link to="/reading" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      Library
-    </Link>
-  );
-}
+const BACK = { to: '/reading', label: 'Reading' } as const;
 
 /** A paragraph with an optional highlighted range (the current selection or a question's evidence). */
 function Paragraph({ text, index, highlight, tone }: { text: string; index: number; highlight: { start: number; end: number } | null; tone: 'selection' | 'evidence' }) {
@@ -132,7 +126,7 @@ export function ReaderPage() {
     );
   }
   if (text === 'missing') {
-    return <PageHeader eyebrow="Reading" title="Text not found" description={error ?? 'It may have been deleted, or it was saved in another browser.'} actions={<BackLink />} />;
+    return <PageHeader eyebrow="Reading" title="Text not found" description={error ?? 'It may have been deleted, or it was saved in another browser.'} back={BACK} />;
   }
 
   const current = selection.state.kind === 'valid' ? selection.state.selection : null;
@@ -153,10 +147,10 @@ export function ReaderPage() {
   return (
     <>
       <PageHeader
+        back={BACK}
         eyebrow={text.source === 'imported' ? 'Your text' : text.textType ? TEXT_TYPE_LABELS[text.textType] : 'Reading'}
         title={<span className="font-serif break-words">{text.title}</span>}
         description={`${text.wordCount} words · about ${text.estimatedMinutes} min${text.level ? ` · ${text.level}` : ''}`}
-        actions={<BackLink />}
       />
       {error ? (
         <Notice tone="error" role="alert" className="mb-6">
@@ -268,33 +262,18 @@ export function ReaderPage() {
             <h2 id={ids.panel} className="sr-only">
               Reading tools
             </h2>
-            <div role="tablist" aria-label="Reading tools" className="flex gap-1 border-b px-2 pt-2">
-              {(
-                [
-                  ['lookup', 'Look up', Search],
-                  ['questions', 'Comprehension', ListChecks],
-                ] as const
-              ).map(([value, label, Icon]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="tab"
-                  id={`${ids.panel}-${value}`}
-                  aria-selected={panel === value}
-                  aria-controls={`${ids.panel}-content`}
-                  onClick={() => setPanel(value)}
-                  className={cn(
-                    '-mb-px inline-flex items-center gap-2 border-b-2 px-3 py-2.5 text-sm transition-colors duration-150',
-                    panel === value ? 'border-foreground font-medium text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  <Icon aria-hidden="true" className="size-4" />
-                  {label}
-                  {value === 'lookup' && current ? <Badge variant="brand" className="px-1.5 py-0">1</Badge> : null}
-                </button>
-              ))}
-            </div>
-            <div role="tabpanel" id={`${ids.panel}-content`} aria-labelledby={`${ids.panel}-${panel}`} className="px-4 py-4">
+            <TabList
+              label="Reading tools"
+              idBase={ids.panel}
+              value={panel}
+              onChange={setPanel}
+              className="px-2 pt-2"
+              items={[
+                { value: 'lookup', label: 'Look up', icon: Search, adornment: current ? <Badge variant="brand" className="px-1.5 py-0">1</Badge> : null },
+                { value: 'questions', label: 'Comprehension', icon: ListChecks },
+              ]}
+            />
+            <div {...tabPanelProps(ids.panel, panel)} className="px-4 py-4 outline-none">
               {panel === 'lookup' ? (
                 <LookupPanel text={text} selection={selection.state} available={lookupAvailable} onSelect={select} onClear={selection.clear} />
               ) : storage ? (

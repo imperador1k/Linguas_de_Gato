@@ -36,7 +36,7 @@ function RecommendationCard({ recommendation, derived, busy, onAct }: { recommen
       ) : null}
       <div className="flex flex-wrap gap-2">
         {action.type === 'train' ? (
-          <Link to={`/progress?section=training&category=${action.category}`} className={buttonVariants({ size: 'sm' })}>
+          <Link to={`/progress/training?category=${action.category}`} className={buttonVariants({ size: 'sm' })}>
             Practise this
           </Link>
         ) : (

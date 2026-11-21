@@ -7,30 +7,22 @@ import {
   withGrammarReview,
   type GrammarSetRecord,
 } from '@ldg/shared';
-import { ArrowLeft, CircleAlert, RotateCcw, Trash } from 'lucide-react';
+import { CircleAlert, RotateCcw, Trash } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { createAutosaver, type Autosaver } from '@/lib/autosave';
 import { describeStorageFailure } from '@/lib/storage/feature-storage';
-import { cn } from '@/lib/utils';
 import { dateFormatter, GRAMMAR_TOPIC_LABELS } from './grammar-labels';
 import { GrammarQuestionItem } from './grammar-question';
 import { grammarStorage } from './storage/grammar-repository';
 
-function BackLink() {
-  return (
-    <Link to="/grammar" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      Grammar Lab
-    </Link>
-  );
-}
+const BACK = { to: '/grammar', label: 'Grammar' } as const;
 
 export function GrammarSetPage() {
   const { setId = '' } = useParams();
@@ -93,7 +85,7 @@ export function GrammarSetPage() {
     );
   }
   if (record === 'missing') {
-    return <PageHeader eyebrow="Grammar" title="Exercise not found" description={saveError ?? 'It may have been deleted, or it was saved in another browser.'} actions={<BackLink />} />;
+    return <PageHeader eyebrow="Grammar" title="Exercise not found" description={saveError ?? 'It may have been deleted, or it was saved in another browser.'} back={BACK} />;
   }
 
   const checked = record.checkedAt !== null;
@@ -122,13 +114,12 @@ export function GrammarSetPage() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={BACK}
         eyebrow={GRAMMAR_TOPIC_LABELS[record.set.topic]}
         title={<span className="break-words">{record.set.title}</span>}
         description={record.set.instructions}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <BackLink />
             <Button variant="ghost" size="icon" aria-label="Delete exercise" title="Delete" onClick={() => setConfirm('delete')}>
               <Trash aria-hidden="true" />
             </Button>

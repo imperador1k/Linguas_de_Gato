@@ -1,9 +1,9 @@
 import { formatBytes, formatSpokenDuration, formatTimestamp, type ExerciseResponse, type SpeakingAttempt } from '@ldg/shared';
-import { ArrowLeft, MessageSquareText, RotateCcw, Trash, X } from 'lucide-react';
+import { MessageSquareText, RotateCcw, Trash, X } from 'lucide-react';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
@@ -240,15 +240,10 @@ export function SpeakingAttemptPage() {
     }
   }
 
-  const backLink = (
-    <Link to="/speaking" className={buttonVariants({ variant: 'secondary' })}>
-      <ArrowLeft aria-hidden="true" />
-      Speaking Lab
-    </Link>
-  );
+  const back = { to: '/speaking', label: 'Speaking' } as const;
 
   if (attempt === 'missing') {
-    return <PageHeader eyebrow="Speaking" title="Attempt not found" description="It may have been deleted, or it was saved in another browser." actions={backLink} />;
+    return <PageHeader eyebrow="Speaking" title="Attempt not found" description="It may have been deleted, or it was saved in another browser." back={back} />;
   }
   if (attempt === null || !storage) {
     return (
@@ -266,6 +261,7 @@ export function SpeakingAttemptPage() {
   return (
     <>
       <PageHeader
+        back={back}
         eyebrow="Speaking attempt"
         title={<span className="break-words">{attempt.prompt.title}</span>}
         description={`${dateFormatter.format(attempt.createdAt)} · ${attempt.mode === 'guided' ? 'Guided' : 'Free'} · ${formatSpokenDuration(
@@ -273,7 +269,6 @@ export function SpeakingAttemptPage() {
         )} · ${CATEGORY_LABELS[attempt.prompt.category]}${attempt.prompt.level ? ` · ${attempt.prompt.level}` : ''}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            {backLink}
             <Button variant="ghost" size="icon" aria-label="Delete attempt" title="Delete attempt" onClick={() => setConfirmDelete(true)}>
               <Trash aria-hidden="true" />
             </Button>

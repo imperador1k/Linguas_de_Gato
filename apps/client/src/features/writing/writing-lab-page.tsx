@@ -1,5 +1,5 @@
 import { countWords, type WritingAttempt, type WritingDraft, type WritingTaskRecord } from '@ldg/shared';
-import { ArrowRight, PenLine, ShieldCheck, Sparkles, Trash } from 'lucide-react';
+import { ArrowRight, Sparkles, Trash } from 'lucide-react';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { HelpDisclosure } from '@/components/ui/help-disclosure';
 import { Notice } from '@/components/ui/notice';
+import { PrivacyNote } from '@/components/ui/privacy-note';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { describeStorageFailure } from '@/lib/storage/feature-storage';
 import { deleteWritingTask, newestFirst, writingStorage, type WritingRepository } from './storage/writing-repository';
@@ -177,28 +179,16 @@ export function WritingLabPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PenLine aria-hidden="true" className="size-4 text-muted-foreground" />
-                How feedback works
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3 pt-1 text-sm leading-relaxed text-muted-foreground">
+          <HelpDisclosure id="writing" title="How feedback works">
+            <div className="flex flex-col gap-3 text-muted-foreground">
               <p>
                 <span className="font-medium text-foreground">Errors</span> are things that are wrong. <span className="font-medium text-foreground">Suggestions</span> are
                 optional improvements to text that is already acceptable.
               </p>
-              <p>Every correction quotes your text; anything that can't be found in it is withheld. An improved version is optional, after you've studied the feedback.</p>
-              <p className="flex gap-2 text-xs">
-                <ShieldCheck aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                  Drafts stay in this browser. When you ask for feedback, your text and the task are sent through this app's local server to Groq; Groq's retention is
-                  governed by your Groq account settings and policies. Feedback is practice guidance, not an official CEFR assessment.
-                </span>
-              </p>
-            </CardContent>
-          </Card>
+              <p>Every correction quotes your text; anything that can't be found in it is withheld. An improved version is optional, after you've studied the feedback. Feedback is practice guidance, not an official CEFR assessment.</p>
+              <PrivacyNote>Drafts stay in this browser; your text and the task are sent only when you ask for feedback.</PrivacyNote>
+            </div>
+          </HelpDisclosure>
         </div>
       </div>
 

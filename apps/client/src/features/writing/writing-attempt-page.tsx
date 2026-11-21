@@ -10,31 +10,23 @@ import {
   type WritingImprovementRequest,
   type WritingImprovementResponse,
 } from '@ldg/shared';
-import { ArrowLeft, LoaderCircle, PenLine, RotateCcw, Sparkles, Trash } from 'lucide-react';
+import { LoaderCircle, PenLine, RotateCcw, Sparkles, Trash } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { describeStorageFailure } from '@/lib/storage/feature-storage';
 import { useApiJob } from '@/lib/use-api-job';
 import { useElapsedSeconds } from '@/lib/use-elapsed-seconds';
-import { cn } from '@/lib/utils';
 import { writingStorage } from './storage/writing-repository';
 import { TaskBrief } from './task-brief';
 import { AnnotatedText, AssessmentSummary, CorrectionList, TextTabs, textWithFixes, type TextView } from './writing-feedback';
 import { dateFormatter } from './writing-labels';
 
-function BackLink() {
-  return (
-    <Link to="/writing" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      Writing Lab
-    </Link>
-  );
-}
+const BACK = { to: '/writing', label: 'Writing' } as const;
 
 function RunningState({ startedAt, label, onCancel }: { startedAt: number; label: string; onCancel: () => void }) {
   const elapsed = useElapsedSeconds(startedAt);
@@ -158,7 +150,7 @@ export function WritingAttemptPage() {
     );
   }
   if (attempt === 'missing') {
-    return <PageHeader eyebrow="Writing" title="Submission not found" description={error ?? 'It may have been deleted, or it was saved in another browser.'} actions={<BackLink />} />;
+    return <PageHeader eyebrow="Writing" title="Submission not found" description={error ?? 'It may have been deleted, or it was saved in another browser.'} back={BACK} />;
   }
 
   const assessment = attempt.assessment?.result ?? null;
@@ -171,13 +163,12 @@ export function WritingAttemptPage() {
 
   return (
     <>
-      <PageHeader
+      <PageHeader back={BACK}
         eyebrow="Writing feedback"
         title={<span className="break-words">{attempt.task.title}</span>}
         description={`Submitted ${dateFormatter.format(attempt.submittedAt)} · ${attempt.wordCount} words${attempt.timerElapsedMs > 0 ? ` · ${formatTimestamp(attempt.timerElapsedMs / 1000)} timed` : ''}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <BackLink />
             <Button variant="ghost" size="icon" aria-label="Delete submission" title="Delete" onClick={() => setConfirm('delete')}>
               <Trash aria-hidden="true" />
             </Button>
@@ -231,7 +222,7 @@ export function WritingAttemptPage() {
                     <div className="flex flex-col gap-3">
                       <p className="text-xs text-muted-foreground">
                         <span className="underline decoration-destructive decoration-2 underline-offset-4">Solid</span> = error ·{' '}
-                        <span className="underline decoration-brand decoration-dotted decoration-2 underline-offset-4">dotted</span> = suggestion. Select a passage to see its explanation.
+                        <span className="underline decoration-muted-foreground decoration-dotted decoration-2 underline-offset-4">dotted</span> = suggestion. Select a passage to see its explanation.
                       </p>
                       <AnnotatedText text={attempt.text} corrections={corrections} activeId={activeId} onSelect={select} />
                     </div>

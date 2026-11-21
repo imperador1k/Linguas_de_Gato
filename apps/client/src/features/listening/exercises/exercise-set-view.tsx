@@ -26,7 +26,7 @@ const FIELD_CLASS =
 
 const OUTCOME: Record<QuestionOutcome, { label: string; icon: typeof CircleCheck; className: string }> = {
   correct: { label: 'Correct', icon: CircleCheck, className: 'text-success' },
-  partly: { label: 'Partly right', icon: CircleDashed, className: 'text-brand' },
+  partly: { label: 'Partly right', icon: CircleDashed, className: 'text-caution' },
   incorrect: { label: 'Not quite', icon: CircleX, className: 'text-destructive' },
   unanswered: { label: 'Not answered', icon: CircleDashed, className: 'text-muted-foreground' },
   unrated: { label: 'Compare your answer', icon: CircleDashed, className: 'text-muted-foreground' },

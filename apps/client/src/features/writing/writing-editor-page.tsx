@@ -8,11 +8,11 @@ import {
   type WritingDraft,
   type WritingTaskRecord,
 } from '@ldg/shared';
-import { ArrowLeft, CircleAlert, CircleCheck, Pause, Play, Send, Timer, Trash } from 'lucide-react';
+import { CircleAlert, CircleCheck, Pause, Play, Send, Timer, Trash } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
 import { createAutosaver, type AutosaveStatus, type Autosaver } from '@/lib/autosave';
@@ -23,14 +23,7 @@ import { TaskBrief } from './task-brief';
 
 const AUTOSAVE_DELAY_MS = 800;
 
-function BackLink() {
-  return (
-    <Link to="/writing" className={cn(buttonVariants({ variant: 'secondary' }))}>
-      <ArrowLeft aria-hidden="true" />
-      Writing Lab
-    </Link>
-  );
-}
+const BACK = { to: '/writing', label: 'Writing' } as const;
 
 function SaveIndicator({ status, persistent }: { status: AutosaveStatus; persistent: boolean }) {
   if (status === 'error') {
@@ -176,7 +169,7 @@ export function WritingEditorPage() {
     );
   }
   if (loaded === 'missing') {
-    return <PageHeader eyebrow="Writing" title="Task not found" description={saveError ?? 'It may have been deleted, or it was saved in another browser.'} actions={<BackLink />} />;
+    return <PageHeader eyebrow="Writing" title="Task not found" description={saveError ?? 'It may have been deleted, or it was saved in another browser.'} back={BACK} />;
   }
 
   const { task } = loaded.record;
@@ -249,7 +242,7 @@ export function WritingEditorPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Writing" title={<span className="break-words">{task.title}</span>} actions={<BackLink />} />
+      <PageHeader back={BACK} eyebrow="Writing" title={<span className="break-words">{task.title}</span>} />
 
       {storage?.fallbackReason ? <Notice className="mb-6">{storage.fallbackReason.message} Your draft lasts until you close this tab.</Notice> : null}
       {saveError ? (
@@ -290,7 +283,7 @@ export function WritingEditorPage() {
             <div id={statusId} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t px-4 py-2.5 text-sm sm:px-5">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                 <span className="font-mono tabular-nums">
-                  <span className={cn('font-medium', status === 'within' ? 'text-success' : status === 'empty' ? 'text-foreground' : 'text-brand')}>{words}</span>
+                  <span className={cn('font-medium', status === 'within' ? 'text-success' : status === 'empty' ? 'text-foreground' : 'text-caution')}>{words}</span>
                   <span className="text-muted-foreground"> / {task.wordCount.min}–{task.wordCount.max} words</span>
                 </span>
                 <span className="text-muted-foreground" aria-live="polite">

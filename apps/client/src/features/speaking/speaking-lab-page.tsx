@@ -8,7 +8,7 @@ import {
   type SpeakingCategory,
   type SpeakingLevel,
 } from '@ldg/shared';
-import { ArrowRight, Mic, Plus, Sparkles, Trash } from 'lucide-react';
+import { ArrowRight, Plus, Sparkles, Trash } from 'lucide-react';
 import { useCallback, useEffect, useId, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
@@ -25,7 +25,8 @@ import { FORMAT_LABELS } from './generation-labels';
 import { CATEGORY_LABELS, PROMPT_LIBRARY } from './prompt-library';
 import { TopicGenerator } from './topic-generator';
 import { describeSpeakingStorageError, forgetRecording, useSpeakingStorage, type SpeakingStorage } from './storage/speaking-storage';
-import { SpeakingPrivacyNote } from './speaking-practice-page';
+import { HelpDisclosure } from '@/components/ui/help-disclosure';
+import { PrivacyNote } from '@/components/ui/privacy-note';
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -408,15 +409,9 @@ export function SpeakingLabPage() {
         </div>
         <div className="flex min-w-0 flex-col gap-6">
           {storage ? <AttemptHistory storage={storage} /> : null}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mic aria-hidden="true" className="size-4 text-muted-foreground" />
-                How it works
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-4 pt-1">
-              <ol className={cn('flex flex-col gap-2.5 text-sm leading-relaxed text-muted-foreground')}>
+          <HelpDisclosure id="speaking">
+            <div className="flex flex-col gap-4">
+              <ol className="flex flex-col gap-2.5 text-sm leading-relaxed text-muted-foreground">
                 <li>
                   <span className="font-medium text-foreground">1. Record</span> your answer. The microphone is only used while you
                   record.
@@ -431,15 +426,15 @@ export function SpeakingLabPage() {
                   <span className="font-medium text-foreground">4. Practise</span> the exercises built from your answer.
                 </li>
               </ol>
-              <SpeakingPrivacyNote />
               <p className="text-xs leading-relaxed text-muted-foreground">
                 Pronunciation isn't scored: a transcript can't show it. That needs dedicated audio analysis, which is planned.
               </p>
+              <PrivacyNote>Nothing is sent until you press Transcribe on the practice page.</PrivacyNote>
               <Link to="/speaking/practice/library/work-remote-or-office" className={cn(buttonVariants({ variant: 'link' }), 'self-start text-sm')}>
                 Try a B2 topic now
               </Link>
-            </CardContent>
-          </Card>
+            </div>
+          </HelpDisclosure>
         </div>
       </div>
     </>

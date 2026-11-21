@@ -11,15 +11,16 @@ import {
   type TargetDurationSeconds,
   type TranscriptionResult,
 } from '@ldg/shared';
-import { ArrowLeft, AudioLines, RotateCcw, ShieldCheck } from 'lucide-react';
+import { AudioLines, RotateCcw } from 'lucide-react';
 import { useEffect, useId, useState } from 'react';
-import { Link, useBlocker, useNavigate, useParams } from 'react-router';
+import { useBlocker, useNavigate, useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConfirmDialog } from '@/components/ui/dialog';
 import { Notice } from '@/components/ui/notice';
+import { PrivacyNote } from '@/components/ui/privacy-note';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { cn } from '@/lib/utils';
 import { TranscriptionOptionsFields, useTranscriptionPreferences } from '../listening/transcription/transcription-options';
@@ -104,17 +105,12 @@ function useObjectUrl(blob: Blob | null): string | null {
   return url;
 }
 
+/** Shown where the recording can be sent; the full explanation lives in Settings → Privacy & AI. */
 export function SpeakingPrivacyNote({ className }: { className?: string }) {
   return (
-    <p className={cn('flex gap-2 text-xs leading-relaxed text-muted-foreground', className)}>
-      <ShieldCheck aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-      <span>
-        Your recording stays in this browser until you choose to transcribe it. Then the audio is sent through this app's local
-        server to <span className="font-medium text-foreground">Groq</span> for transcription, and your confirmed transcript is
-        sent to Groq for feedback. The server deletes its temporary copy after each request; Groq's own retention is governed by
-        your Groq account settings and policies.
-      </span>
-    </p>
+    <PrivacyNote className={className}>
+      Your recording stays in this browser until you press Transcribe; then the audio, and later your confirmed transcript, are sent to Groq through the local server.
+    </PrivacyNote>
   );
 }
 
@@ -364,12 +360,7 @@ export function SpeakingPracticePage() {
         eyebrow="Speaking"
         title="Topic not found"
         description="It may have been deleted."
-        actions={
-          <Link to="/speaking" className={buttonVariants({ variant: 'secondary' })}>
-            <ArrowLeft aria-hidden="true" />
-            All topics
-          </Link>
-        }
+        back={{ to: '/speaking', label: 'Speaking' }}
       />
     );
   }
@@ -388,12 +379,7 @@ export function SpeakingPracticePage() {
       <PageHeader
         eyebrow="Speaking practice"
         title={<span className="break-words">{task.prompt.title}</span>}
-        actions={
-          <Link to="/speaking" className={buttonVariants({ variant: 'secondary' })}>
-            <ArrowLeft aria-hidden="true" />
-            All topics
-          </Link>
-        }
+        back={{ to: '/speaking', label: 'Speaking' }}
       />
 
       {capabilities.status === 'ready' && !transcriptionAvailable ? (

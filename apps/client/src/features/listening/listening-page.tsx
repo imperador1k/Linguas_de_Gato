@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpDisclosure } from '@/components/ui/help-disclosure';
 import { Notice } from '@/components/ui/notice';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { MediaDropzone } from './media-dropzone';
@@ -133,12 +134,8 @@ export function ListeningPage() {
 
         <div className="flex min-w-0 flex-col gap-6">
           {storage ? <RecentSessions storage={storage} /> : null}
-          <Card>
-            <CardHeader>
-              <CardTitle>How to practise</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-3">
-              <ol className="flex flex-col gap-3 text-sm leading-relaxed text-muted-foreground">
+          <HelpDisclosure id="listening" title="How to practise">
+            <ol className="flex flex-col gap-3 text-sm leading-relaxed text-muted-foreground">
                 <li>
                   <span className="font-medium text-foreground">1. Listen once</span> without the transcript, for gist.
                 </li>
@@ -154,8 +151,7 @@ export function ListeningPage() {
                   <span className="font-medium text-foreground">4. Listen again</span> at full speed without reading.
                 </li>
               </ol>
-            </CardContent>
-          </Card>
+          </HelpDisclosure>
         </div>
       </div>
     </>
