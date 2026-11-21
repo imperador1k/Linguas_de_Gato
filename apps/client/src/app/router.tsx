@@ -143,6 +143,14 @@ export const router = createBrowserRouter([
         },
       },
       {
+        // Local Vocabulary Trainer rounds (no AI).
+        path: 'vocabulary/train/:setId',
+        lazy: async () => {
+          const { TrainerPage } = await import('@/features/vocabulary/trainer/trainer-page');
+          return { Component: TrainerPage };
+        },
+      },
+      {
         // `/progress?section=…` URLs from before M7.1 are redirected inside the page.
         path: 'progress/:section?',
         lazy: async () => {

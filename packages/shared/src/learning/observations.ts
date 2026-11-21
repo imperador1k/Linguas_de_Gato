@@ -3,7 +3,8 @@ import type { ListeningExerciseSet } from '../contracts/exercise-generation.js';
 import type { GrammarSetRecord } from '../contracts/grammar.js';
 import type { ReadingQuestionSet, ReadingTextRecord } from '../contracts/reading.js';
 import type { SpeakingAttempt } from '../contracts/speaking.js';
-import type { VocabularyEntry, VocabularyPracticeSet } from '../contracts/vocabulary.js';
+import { isLocalQuestionType, type LocalVocabularyQuestion, type VocabularyEntry, type VocabularyPracticeSet } from '../contracts/vocabulary.js';
+import { hintsUsed, matchLocalAnswer } from '../domain/vocabulary-trainer.js';
 import type { WritingAttempt } from '../contracts/writing.js';
 import { evaluateGrammarAnswer } from '../domain/grammar-answers.js';
 import { questionOutcome } from '../domain/exercise-generation.js';
@@ -325,6 +326,43 @@ export function extractObservations(snapshot: LearningSnapshot): ExtractionResul
     const answers = new Map(set.answers.map((answer) => [answer.questionId, answer]));
     const reviews = new Map(set.reviews.map((review) => [review.questionId, review]));
     for (const question of set.questions) {
+      // Local trainer questions (Vocabulary Trainer): graded verdicts give more precise evidence.
+      if (isLocalQuestionType(question.type)) {
+        const local = question as LocalVocabularyQuestion;
+        const answer = answers.get(question.id);
+        const result = matchLocalAnswer(local, answer);
+        if (!result) continue;
+        const hints = hintsUsed(answer);
+        const typed = answer?.kind === 'typed' && answer.text.trim() ? clip(answer.text) : null;
+        const category: LearningCategory = result.verdict === 'almost' ? 'spelling' : result.verdict === 'wrong_form' ? 'grammar_other' : 'vocabulary_retention';
+        push({
+          id: `vocabulary:${set.id}:${set.history.length}:${question.id}`,
+          module: 'vocabulary',
+          sourceRecordId: set.id,
+          sourceLabel: local.lemma,
+          sourcePath: `/vocabulary/train/${set.id}`,
+          occurredAt: set.checkedAt,
+          severity: null,
+          category,
+          kind: result.verdict === 'correct' ? 'correct' : 'incorrect',
+          original: result.verdict === 'correct' ? null : typed,
+          corrected: result.verdict === 'correct' ? null : clip(result.closest),
+          note:
+            result.verdict === 'wrong_form'
+              ? 'Right word, wrong form'
+              : result.verdict === 'almost'
+                ? 'Near miss (spelling)'
+                : result.verdict === 'empty'
+                  ? 'Not known'
+                  : result.verdict === 'correct' && hints > 0
+                    ? `Correct with ${hints} hint${hints === 1 ? '' : 's'}`
+                    : null,
+          evidence: 'answer_key',
+          // A hinted answer is weaker evidence of recall.
+          confidence: hints > 0 ? 'medium' : 'high',
+        });
+        continue;
+      }
       const outcome = evaluateVocabularyAnswer(question, answers.get(question.id));
       const label = entries.get(question.itemId)?.expression ?? 'Vocabulary practice';
       const base = { module: 'vocabulary' as const, sourceRecordId: set.id, sourceLabel: label, sourcePath: `/vocabulary/practice/${set.id}`, occurredAt: set.checkedAt, severity: null };
@@ -361,6 +399,8 @@ export function extractObservations(snapshot: LearningSnapshot): ExtractionResul
 
   for (const entry of snapshot.vocabularyEntries) {
     for (const rating of entry.review.history) {
+      // Schedule changes made by a trainer round: the round's answers are already the evidence.
+      if (rating.via === 'trainer') continue;
       push({
         id: `vocabulary-review:${entry.id}:${rating.at}`,
         module: 'vocabulary',

@@ -11,6 +11,7 @@ import {
 } from '@ldg/shared';
 import { STORES, VOCABULARY_BY_KEY } from '@/lib/storage/app-database';
 import { createFeatureStorage } from '@/lib/storage/feature-storage';
+import { StorageError, parseStoredRecord, requestToPromise, runInTransaction } from '@/lib/storage/indexed-db';
 import { IndexedDbKeyedStore, MemoryKeyedStore, type KeyedStore } from '@/lib/storage/keyed-store';
 
 /**
@@ -21,6 +22,14 @@ import { IndexedDbKeyedStore, MemoryKeyedStore, type KeyedStore } from '@/lib/st
 export interface VocabularyRepository {
   readonly entries: KeyedStore<VocabularyEntry>;
   readonly practiceSets: KeyedStore<VocabularyPracticeSet>;
+  /**
+   * Checks a trainer round atomically: writes the changed collection entries
+   * and the checked set in one transaction, but only if the stored set is
+   * still unchecked. Returns false (and writes nothing) when it was already
+   * checked, e.g. by another tab, so a retried or doubled completion can never
+   * apply the same review ratings twice.
+   */
+  commitRound(entries: readonly VocabularyEntry[], checkedSet: VocabularyPracticeSet): Promise<boolean>;
 }
 
 const definitions = {
@@ -28,12 +37,53 @@ const definitions = {
   practiceSets: { name: STORES.vocabularyPracticeSets, schema: vocabularyPracticeSetSchema, label: 'vocabulary practice set', key: 'id' } as const,
 };
 
+/** Validates everything before any write, so an invalid record can't leave a half-written round. */
+function validateRound(entries: readonly VocabularyEntry[], checkedSet: VocabularyPracticeSet) {
+  return { entryRows: entries.map((entry) => vocabularyEntrySchema.parse(entry)), setRow: vocabularyPracticeSetSchema.parse(checkedSet) };
+}
+
 export function indexedDbVocabularyRepository(database: IDBDatabase): VocabularyRepository {
-  return { entries: new IndexedDbKeyedStore(database, definitions.entries), practiceSets: new IndexedDbKeyedStore(database, definitions.practiceSets) };
+  return {
+    entries: new IndexedDbKeyedStore(database, definitions.entries),
+    practiceSets: new IndexedDbKeyedStore(database, definitions.practiceSets),
+    async commitRound(entries, checkedSet) {
+      const { entryRows, setRow } = validateRound(entries, checkedSet);
+      let transaction: IDBTransaction;
+      try {
+        transaction = database.transaction([STORES.vocabularyEntries, STORES.vocabularyPracticeSets], 'readwrite');
+      } catch (error) {
+        // InvalidStateError: the connection was closed (e.g. a newer tab upgraded the schema).
+        throw new StorageError('blocked', undefined, { cause: error });
+      }
+      return runInTransaction(transaction, async () => {
+        const sets = transaction.objectStore(STORES.vocabularyPracticeSets);
+        const stored = parseStoredRecord(vocabularyPracticeSetSchema, await requestToPromise(sets.get(setRow.id)), definitions.practiceSets.label);
+        if (stored === null || stored.checkedAt !== null) return false;
+        const store = transaction.objectStore(STORES.vocabularyEntries);
+        for (const row of entryRows) store.put(row);
+        sets.put(setRow);
+        return true;
+      });
+    },
+  };
 }
 
 export function memoryVocabularyRepository(): VocabularyRepository {
-  return { entries: new MemoryKeyedStore(definitions.entries), practiceSets: new MemoryKeyedStore(definitions.practiceSets) };
+  const entries = new MemoryKeyedStore(definitions.entries);
+  const practiceSets = new MemoryKeyedStore(definitions.practiceSets);
+  return {
+    entries,
+    practiceSets,
+    async commitRound(changed, checkedSet) {
+      const { entryRows, setRow } = validateRound(changed, checkedSet);
+      const stored = await practiceSets.get(setRow.id);
+      if (stored === null || stored.checkedAt !== null) return false;
+      // Already validated, and memory writes don't fail midway.
+      for (const row of entryRows) await entries.put(row);
+      await practiceSets.put(setRow);
+      return true;
+    },
+  };
 }
 
 export const vocabularyStorage = createFeatureStorage('Vocabulary', indexedDbVocabularyRepository, memoryVocabularyRepository);

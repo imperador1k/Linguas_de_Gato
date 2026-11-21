@@ -1,0 +1,401 @@
+{
+  "format": "linguas-de-gato-vocabulary-pack",
+  "schemaVersion": 1,
+  "id": "en-demo-everyday",
+  "version": "1.0.0",
+  "language": "en",
+  "title": "Everyday English (demonstration)",
+  "description": "A small, original demonstration pack for developing and testing the Vocabulary Trainer. It is not a curated production word list.",
+  "demo": true,
+  "licence": {
+    "name": "Original demonstration content",
+    "url": null,
+    "attribution": "Written for Línguas de Gato as demonstration data. CEFR levels are the author's estimates, not taken from an official list."
+  },
+  "sources": [
+    { "id": "demo-author", "name": "Línguas de Gato demonstration content (author's estimate)", "url": null, "licence": "Original content written for this project" }
+  ],
+  "entries": [
+    {
+      "id": "en:book:noun", "lemma": "book", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "books" }, "topics": ["education", "everyday"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 1,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["livro"] }, "definition": "a set of printed pages fixed together inside a cover, or the text published in this form", "register": "neutral",
+        "contexts": [
+          { "id": "book-n-1", "sentence": "She left her ___ on the train this morning.", "answer": "book" },
+          { "id": "book-n-2", "sentence": "I've read three ___ this month.", "answer": "books" }
+        ] }]
+    },
+    {
+      "id": "en:book:verb", "lemma": "book", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "books", "past": "booked", "past participle": "booked", "-ing": "booking" }, "topics": ["travel"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["reservar", "marcar"] }, "definition": "to arrange to have a seat, room, table or ticket for a particular time", "accepted": ["reserve"], "register": "neutral",
+        "contexts": [
+          { "id": "book-v-1", "sentence": "We ___ a table for eight people last night.", "answer": "booked", "accepted": ["reserved"] },
+          { "id": "book-v-2", "sentence": "Have you ___ your flight to Madeira yet?", "answer": "booked", "accepted": ["reserved"] }
+        ] }]
+    },
+    {
+      "id": "en:go:verb", "lemma": "go", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "goes", "past": "went", "past participle": "gone", "-ing": "going" }, "topics": ["everyday", "travel"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["ir"] }, "definition": "to move or travel from one place to another", "register": "neutral",
+        "contexts": [
+          { "id": "go-v-1", "sentence": "Yesterday we ___ to the beach after work.", "answer": "went", "clue": "to move or travel somewhere (it happened yesterday)" },
+          { "id": "go-v-2", "sentence": "She isn't here; she has already ___ home.", "answer": "gone" }
+        ] }]
+    },
+    {
+      "id": "en:child:noun", "lemma": "child", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "children" }, "topics": ["everyday"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["criança", "filho", "filha"] }, "definition": "a young person who is not yet an adult", "register": "neutral",
+        "contexts": [
+          { "id": "child-n-1", "sentence": "There were three ___ playing in the garden.", "answer": "children", "accepted": ["kids"] },
+          { "id": "child-n-2", "sentence": "As a ___, I spent every summer in the Algarve.", "answer": "child", "accepted": ["kid"] }
+        ] }]
+    },
+    {
+      "id": "en:buy:verb", "lemma": "buy", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "buys", "past": "bought", "past participle": "bought", "-ing": "buying" }, "topics": ["money", "everyday"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["comprar"] }, "definition": "to get something by paying money for it", "register": "neutral",
+        "contexts": [
+          { "id": "buy-v-1", "sentence": "I ___ a new coat in the sales last week.", "answer": "bought" },
+          { "id": "buy-v-2", "sentence": "Where can I ___ a ticket for the museum?", "answer": "buy", "accepted": ["get"] }
+        ] }]
+    },
+    {
+      "id": "en:colour:noun", "lemma": "colour", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "colours" }, "variants": ["color"], "topics": ["everyday"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["cor"] }, "definition": "how something looks because of the way it reflects light, for example red, blue or green", "register": "neutral",
+        "contexts": [
+          { "id": "colour-n-1", "sentence": "What ___ is your new car?", "answer": "colour", "accepted": ["color"] },
+          { "id": "colour-n-2", "sentence": "The autumn ___ in the Gerês mountains are beautiful.", "answer": "colours", "accepted": ["colors"] }
+        ] }]
+    },
+    {
+      "id": "en:organise:verb", "lemma": "organise", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "organises", "past": "organised", "past participle": "organised", "-ing": "organising" }, "variants": ["organize"], "topics": ["work"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["organizar"] }, "definition": "to plan or arrange something carefully", "register": "neutral",
+        "contexts": [
+          { "id": "organise-v-1", "sentence": "Who is going to ___ the office party this year?", "answer": "organise", "accepted": ["organize"] },
+          { "id": "organise-v-2", "sentence": "The trip was very well ___.", "answer": "organised", "accepted": ["organized"] }
+        ] }]
+    },
+    {
+      "id": "en:ice-cream:noun", "lemma": "ice cream", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "ice creams" }, "variants": ["ice-cream"], "topics": ["food"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["gelado"] }, "definition": "a sweet frozen food made from milk or cream", "register": "neutral",
+        "contexts": [{ "id": "ice-cream-n-1", "sentence": "The children wanted chocolate ___ after lunch.", "answer": "ice cream", "accepted": ["ice-cream"] }] }]
+    },
+    {
+      "id": "en:look-after:verb", "lemma": "look after", "partOfSpeech": "verb", "kind": "phrasal_verb",
+      "forms": { "third person": "looks after", "past": "looked after", "-ing": "looking after" }, "topics": ["everyday", "home"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["cuidar de", "tomar conta de"] }, "definition": "to take care of someone or something", "accepted": ["take care of"], "register": "neutral",
+        "contexts": [
+          { "id": "look-after-v-1", "sentence": "My parents ___ our dog when we are on holiday.", "answer": "look after", "accepted": ["take care of"] },
+          { "id": "look-after-v-2", "sentence": "Thanks for ___ the plants while I was away.", "answer": "looking after", "accepted": ["taking care of"] }
+        ] }]
+    },
+    {
+      "id": "en:run-out-of:verb", "lemma": "run out of", "partOfSpeech": "verb", "kind": "phrasal_verb",
+      "forms": { "third person": "runs out of", "past": "ran out of", "-ing": "running out of" }, "topics": ["everyday", "home"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 4,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["ficar sem", "esgotar"] }, "definition": "to use all of something so that none is left", "register": "neutral",
+        "contexts": [
+          { "id": "run-out-of-v-1", "sentence": "We've ___ milk, so I'll go to the shop.", "answer": "run out of" },
+          { "id": "run-out-of-v-2", "sentence": "The car ___ petrol just outside Évora.", "answer": "ran out of" }
+        ] }]
+    },
+    {
+      "id": "en:cafe:noun", "lemma": "café", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "cafés" }, "variants": ["cafe"], "topics": ["food", "everyday"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["café (estabelecimento)", "pastelaria"] }, "definition": "a small restaurant that serves drinks and simple meals", "register": "neutral",
+        "contexts": [{ "id": "cafe-n-1", "sentence": "Let's meet at the ___ opposite the station.", "answer": "café", "accepted": ["cafe"] }] }]
+    },
+    {
+      "id": "en:well-known:adjective", "lemma": "well-known", "partOfSpeech": "adjective", "kind": "word",
+      "forms": {}, "topics": ["everyday"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["conhecido", "famoso"] }, "definition": "known by many people", "accepted": ["famous"], "register": "neutral",
+        "contexts": [{ "id": "well-known-a-1", "sentence": "She is a ___ writer in Portugal.", "answer": "well-known", "accepted": ["famous"] }] }]
+    },
+    {
+      "id": "en:light:adjective", "lemma": "light", "partOfSpeech": "adjective", "kind": "word",
+      "forms": { "comparative": "lighter", "superlative": "lightest" }, "topics": ["home", "travel"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [
+        { "id": "s1", "translations": { "pt-PT": ["leve"] }, "definition": "not heavy; easy to lift or carry", "register": "neutral",
+          "contexts": [{ "id": "light-a-1", "sentence": "This suitcase is very ___, so I can carry it myself.", "answer": "light" }] },
+        { "id": "s2", "translations": { "pt-PT": ["claro", "luminoso"] }, "definition": "full of natural light; not dark", "accepted": ["bright"], "register": "neutral",
+          "contexts": [{ "id": "light-a-2", "sentence": "The kitchen is ___ and warm in the mornings.", "answer": "light", "accepted": ["bright"] }] }
+      ]
+    },
+    {
+      "id": "en:laptop:noun", "lemma": "laptop", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "laptops" }, "topics": ["technology"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 1,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["portátil", "computador portátil"] }, "definition": "a small computer that you can carry around easily", "register": "neutral",
+        "contexts": [{ "id": "laptop-n-1", "sentence": "I always take my ___ when I work from home.", "answer": "laptop" }] }]
+    },
+    {
+      "id": "en:download:verb", "lemma": "download", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "downloads", "past": "downloaded", "-ing": "downloading" }, "topics": ["technology"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["descarregar", "transferir"] }, "definition": "to copy files or programs from the internet onto a computer or phone", "register": "neutral",
+        "contexts": [
+          { "id": "download-v-1", "sentence": "You can ___ the app for free.", "answer": "download" },
+          { "id": "download-v-2", "sentence": "I ___ the photos from my phone last night.", "answer": "downloaded" }
+        ] }]
+    },
+    {
+      "id": "en:password:noun", "lemma": "password", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "passwords" }, "topics": ["technology"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 1,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["palavra-passe"] }, "definition": "a secret word or set of characters that lets you into a computer system or account", "register": "neutral",
+        "contexts": [{ "id": "password-n-1", "sentence": "Never share your ___ with anyone.", "answer": "password" }] }]
+    },
+    {
+      "id": "en:reliable:adjective", "lemma": "reliable", "partOfSpeech": "adjective", "kind": "word",
+      "forms": {}, "topics": ["technology", "work"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["fiável", "de confiança"] }, "definition": "able to be trusted to work well or to behave as expected", "accepted": ["dependable"], "register": "neutral",
+        "contexts": [{ "id": "reliable-a-1", "sentence": "We need a ___ internet connection for video calls.", "answer": "reliable", "accepted": ["dependable"] }] }]
+    },
+    {
+      "id": "en:journey:noun", "lemma": "journey", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "journeys" }, "topics": ["travel"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["viagem", "trajeto"] }, "definition": "an act of travelling from one place to another, especially over a long distance", "register": "neutral",
+        "contexts": [{ "id": "journey-n-1", "sentence": "The ___ from Lisbon to Porto takes about three hours by train.", "answer": "journey", "accepted": ["trip"] }] }]
+    },
+    {
+      "id": "en:luggage:noun", "lemma": "luggage", "partOfSpeech": "noun", "kind": "word",
+      "forms": {}, "topics": ["travel"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["bagagem"] }, "definition": "the bags and suitcases you take with you when you travel", "accepted": ["baggage"], "register": "neutral",
+        "contexts": [{ "id": "luggage-n-1", "sentence": "Please don't leave your ___ unattended.", "answer": "luggage", "accepted": ["baggage"] }] }]
+    },
+    {
+      "id": "en:abroad:adverb", "lemma": "abroad", "partOfSpeech": "adverb", "kind": "word",
+      "forms": {}, "topics": ["travel", "education"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["no estrangeiro", "para o estrangeiro"] }, "definition": "in or to a foreign country", "register": "neutral",
+        "contexts": [{ "id": "abroad-adv-1", "sentence": "Many young people want to study ___ for a year.", "answer": "abroad" }] }]
+    },
+    {
+      "id": "en:delay:noun", "lemma": "delay", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "delays" }, "topics": ["travel"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["atraso"] }, "definition": "a period of time by which something is late", "register": "neutral",
+        "contexts": [{ "id": "delay-n-1", "sentence": "There was a two-hour ___ because of the storm.", "answer": "delay" }] }]
+    },
+    {
+      "id": "en:colleague:noun", "lemma": "colleague", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "colleagues" }, "topics": ["work"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 4,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["colega (de trabalho)"] }, "definition": "a person you work with", "register": "neutral",
+        "contexts": [{ "id": "colleague-n-1", "sentence": "I had lunch with a ___ from the marketing team.", "answer": "colleague", "accepted": ["co-worker"] }] }]
+    },
+    {
+      "id": "en:deadline:noun", "lemma": "deadline", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "deadlines" }, "topics": ["work"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["prazo"] }, "definition": "a time or day by which something must be done", "register": "neutral",
+        "contexts": [{ "id": "deadline-n-1", "sentence": "The ___ for the report is Friday at noon.", "answer": "deadline" }] }]
+    },
+    {
+      "id": "en:hire:verb", "lemma": "hire", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "hires", "past": "hired", "-ing": "hiring" }, "topics": ["work", "travel"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [
+        { "id": "s1", "translations": { "pt-PT": ["contratar"] }, "definition": "to give someone a job", "accepted": ["employ"], "register": "neutral",
+          "contexts": [{ "id": "hire-v-1", "sentence": "The company ___ ten new engineers last year.", "answer": "hired", "accepted": ["employed"] }] },
+        { "id": "s2", "translations": { "pt-PT": ["alugar"] }, "definition": "to pay to use something for a short time", "accepted": ["rent"], "register": "neutral",
+          "contexts": [{ "id": "hire-v-2", "sentence": "We ___ a car for the weekend in the Douro valley.", "answer": "hired", "accepted": ["rented"] }] }
+      ]
+    },
+    {
+      "id": "en:salary:noun", "lemma": "salary", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "salaries" }, "topics": ["work", "money"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["salário", "ordenado"] }, "definition": "a fixed amount of money that you earn each month or year from your job", "register": "neutral",
+        "contexts": [{ "id": "salary-n-1", "sentence": "She asked her manager for a higher ___.", "answer": "salary" }] }]
+    },
+    {
+      "id": "en:headache:noun", "lemma": "headache", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "headaches" }, "topics": ["health"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["dor de cabeça"] }, "definition": "a pain in your head", "register": "neutral",
+        "contexts": [{ "id": "headache-n-1", "sentence": "I've had a terrible ___ all morning.", "answer": "headache" }] }]
+    },
+    {
+      "id": "en:recover:verb", "lemma": "recover", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "recovers", "past": "recovered", "-ing": "recovering" }, "topics": ["health"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["recuperar"] }, "definition": "to become healthy again after an illness or injury", "register": "neutral",
+        "contexts": [
+          { "id": "recover-v-1", "sentence": "It took him a month to ___ from the operation.", "answer": "recover" },
+          { "id": "recover-v-2", "sentence": "She has fully ___ and is back at work.", "answer": "recovered" }
+        ] }]
+    },
+    {
+      "id": "en:healthy:adjective", "lemma": "healthy", "partOfSpeech": "adjective", "kind": "word",
+      "forms": { "comparative": "healthier", "superlative": "healthiest" }, "topics": ["health", "food"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 1,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["saudável"] }, "definition": "physically strong and well, or good for your health", "register": "neutral",
+        "contexts": [{ "id": "healthy-a-1", "sentence": "Fresh fruit is part of a ___ diet.", "answer": "healthy" }] }]
+    },
+    {
+      "id": "en:appointment:noun", "lemma": "appointment", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "appointments" }, "topics": ["health", "work"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["consulta", "marcação"] }, "definition": "an arrangement to see someone, such as a doctor, at a particular time", "register": "neutral",
+        "contexts": [{ "id": "appointment-n-1", "sentence": "I have a dentist ___ at three o'clock.", "answer": "appointment" }] }]
+    },
+    {
+      "id": "en:knowledge:noun", "lemma": "knowledge", "partOfSpeech": "noun", "kind": "word",
+      "forms": {}, "topics": ["education"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 4,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["conhecimento", "conhecimentos"] }, "definition": "the information and understanding that you have about something", "register": "neutral",
+        "contexts": [{ "id": "knowledge-n-1", "sentence": "Her ___ of local history is impressive.", "answer": "knowledge" }] }]
+    },
+    {
+      "id": "en:improve:verb", "lemma": "improve", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "improves", "past": "improved", "-ing": "improving" }, "topics": ["education", "work"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["melhorar"] }, "definition": "to make something better, or to become better", "register": "neutral",
+        "contexts": [
+          { "id": "improve-v-1", "sentence": "I want to ___ my English before the interview.", "answer": "improve" },
+          { "id": "improve-v-2", "sentence": "His marks have ___ a lot this year.", "answer": "improved" }
+        ] }]
+    },
+    {
+      "id": "en:teach:verb", "lemma": "teach", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "teaches", "past": "taught", "past participle": "taught", "-ing": "teaching" }, "topics": ["education"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["ensinar", "dar aulas"] }, "definition": "to give lessons or help someone learn something", "register": "neutral",
+        "contexts": [
+          { "id": "teach-v-1", "sentence": "My aunt ___ maths at a secondary school.", "answer": "teaches" },
+          { "id": "teach-v-2", "sentence": "Who ___ you to swim?", "answer": "taught" }
+        ] }]
+    },
+    {
+      "id": "en:degree:noun", "lemma": "degree", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "degrees" }, "topics": ["education"],
+      "cefr": null, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["licenciatura", "curso superior"] }, "definition": "a qualification you get from a university after completing a course of study", "register": "neutral",
+        "contexts": [{ "id": "degree-n-1", "sentence": "He has a ___ in engineering from the University of Coimbra.", "answer": "degree" }] }]
+    },
+    {
+      "id": "en:forest:noun", "lemma": "forest", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "forests" }, "topics": ["nature"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 1,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["floresta"] }, "definition": "a large area of land covered with trees", "register": "neutral",
+        "contexts": [{ "id": "forest-n-1", "sentence": "We went for a walk in the ___ near the village.", "answer": "forest", "accepted": ["woods"] }] }]
+    },
+    {
+      "id": "en:weather:noun", "lemma": "weather", "partOfSpeech": "noun", "kind": "word",
+      "forms": {}, "topics": ["nature", "everyday"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["tempo (meteorológico)"] }, "definition": "the conditions in the air, such as temperature, rain and wind, at a particular time", "register": "neutral",
+        "contexts": [{ "id": "weather-n-1", "sentence": "The ___ was perfect for a picnic.", "answer": "weather" }] }]
+    },
+    {
+      "id": "en:sunrise:noun", "lemma": "sunrise", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "sunrises" }, "topics": ["nature"],
+      "cefr": null, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["nascer do sol"] }, "definition": "the time in the morning when the sun first appears", "accepted": ["dawn"], "register": "neutral",
+        "contexts": [{ "id": "sunrise-n-1", "sentence": "We got up early to watch the ___ over the sea.", "answer": "sunrise" }] }]
+    },
+    {
+      "id": "en:protect:verb", "lemma": "protect", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "protects", "past": "protected", "-ing": "protecting" }, "topics": ["nature", "health"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["proteger"] }, "definition": "to keep someone or something safe from harm or damage", "register": "neutral",
+        "contexts": [{ "id": "protect-v-1", "sentence": "Sunscreen helps to ___ your skin.", "answer": "protect" }] }]
+    },
+    {
+      "id": "en:knife:noun", "lemma": "knife", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "knives" }, "topics": ["food", "home"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["faca"] }, "definition": "a tool with a sharp blade for cutting", "register": "neutral",
+        "contexts": [
+          { "id": "knife-n-1", "sentence": "You'll need a sharp ___ to cut the bread.", "answer": "knife" },
+          { "id": "knife-n-2", "sentence": "Put the forks and ___ in the drawer, please.", "answer": "knives" }
+        ] }]
+    },
+    {
+      "id": "en:recipe:noun", "lemma": "recipe", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "recipes" }, "topics": ["food"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["receita"] }, "definition": "a set of instructions for cooking a particular dish", "register": "neutral",
+        "contexts": [{ "id": "recipe-n-1", "sentence": "Can you give me your ___ for this soup?", "answer": "recipe" }] }]
+    },
+    {
+      "id": "en:spicy:adjective", "lemma": "spicy", "partOfSpeech": "adjective", "kind": "word",
+      "forms": { "comparative": "spicier", "superlative": "spiciest" }, "topics": ["food"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["picante"] }, "definition": "having a strong, hot flavour from spices", "accepted": ["hot"], "register": "neutral",
+        "contexts": [{ "id": "spicy-a-1", "sentence": "This curry is too ___ for me.", "answer": "spicy", "accepted": ["hot"] }] }]
+    },
+    {
+      "id": "en:fridge:noun", "lemma": "fridge", "partOfSpeech": "noun", "kind": "word",
+      "forms": { "plural": "fridges" }, "topics": ["home", "food"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["frigorífico"] }, "accepted": ["refrigerator"], "register": "informal",
+        "contexts": [{ "id": "fridge-n-1", "sentence": "There's some cold water in the ___.", "answer": "fridge", "accepted": ["refrigerator"] }] }]
+    },
+    {
+      "id": "en:carefully:adverb", "lemma": "carefully", "partOfSpeech": "adverb", "kind": "word",
+      "forms": {}, "topics": ["everyday"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["cuidadosamente", "com cuidado"] }, "definition": "in a way that avoids mistakes, harm or damage", "register": "neutral" }]
+    },
+    {
+      "id": "en:worried:adjective", "lemma": "worried", "partOfSpeech": "adjective", "kind": "word",
+      "forms": {}, "topics": ["emotions"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 2,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["preocupado", "preocupada"] }, "definition": "unhappy because you keep thinking about problems or about things that might go wrong", "accepted": ["anxious"], "register": "neutral",
+        "contexts": [{ "id": "worried-a-1", "sentence": "She was ___ about the exam results.", "answer": "worried", "accepted": ["anxious"] }] }]
+    },
+    {
+      "id": "en:grateful:adjective", "lemma": "grateful", "partOfSpeech": "adjective", "kind": "word",
+      "forms": {}, "topics": ["emotions"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["grato", "agradecido"] }, "definition": "feeling or showing thanks for something", "accepted": ["thankful"], "register": "neutral",
+        "contexts": [{ "id": "grateful-a-1", "sentence": "I'm really ___ for all your help.", "answer": "grateful", "accepted": ["thankful"] }] }]
+    },
+    {
+      "id": "en:afford:verb", "lemma": "afford", "partOfSpeech": "verb", "kind": "word",
+      "forms": { "third person": "affords", "past": "afforded", "-ing": "affording" }, "topics": ["money"],
+      "cefr": { "level": "B1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["ter dinheiro para", "poder pagar"] }, "definition": "to have enough money to pay for something", "register": "neutral",
+        "contexts": [{ "id": "afford-v-1", "sentence": "We can't ___ a holiday abroad this year.", "answer": "afford" }] }]
+    },
+    {
+      "id": "en:cheap:adjective", "lemma": "cheap", "partOfSpeech": "adjective", "kind": "word",
+      "forms": { "comparative": "cheaper", "superlative": "cheapest" }, "topics": ["money"],
+      "cefr": { "level": "A1", "source": "demo-author", "certainty": "estimated" }, "difficulty": 1,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["barato"] }, "definition": "costing little money", "accepted": ["inexpensive"], "register": "neutral",
+        "contexts": [
+          { "id": "cheap-a-1", "sentence": "The tickets were surprisingly ___.", "answer": "cheap", "accepted": ["inexpensive"] },
+          { "id": "cheap-a-2", "sentence": "This shop is ___ than the one in the centre.", "answer": "cheaper" }
+        ] }]
+    },
+    {
+      "id": "en:by-the-way:phrase", "lemma": "by the way", "partOfSpeech": "phrase", "kind": "expression",
+      "forms": {}, "topics": ["everyday"],
+      "cefr": { "level": "A2", "source": "demo-author", "certainty": "estimated" }, "difficulty": 3,
+      "senses": [{ "id": "s1", "translations": { "pt-PT": ["já agora", "a propósito"] }, "definition": "used to introduce a new subject or some extra information in a conversation", "accepted": ["incidentally"], "register": "informal",
+        "contexts": [{ "id": "by-the-way-p-1", "sentence": "___, did you remember to call your mother?", "answer": "by the way", "accepted": ["incidentally"] }] }]
+    }
+  ]
+}

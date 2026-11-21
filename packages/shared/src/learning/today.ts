@@ -1,4 +1,5 @@
 import { countWords, type WritingDraft, type WritingTaskRecord } from '../contracts/writing.js';
+import { isSavedSense } from '../domain/vocabulary-trainer.js';
 import type { LearningModule, LearningSnapshot } from './observations.js';
 
 /**
@@ -44,6 +45,17 @@ export interface WorkItem {
 function mediaOf(session: { readonly id: string; readonly source: { readonly kind: string; readonly mediaStored?: boolean } }): Pick<WorkItem, 'media' | 'sessionId'> {
   if (session.source.kind !== 'file') return {};
   return { media: session.source.mediaStored ? 'audio-saved' : 'needs-file', sessionId: session.id };
+}
+
+const TRAINER_MODE_LABELS: Record<string, string> = { spelling: 'Spelling', context: 'Context', definition: 'Definition' };
+
+/** Title and link of a vocabulary practice set: AI practice, or a local trainer round. */
+function practiceSetLink(set: { readonly id: string; readonly model: string; readonly types: readonly string[]; readonly entryIds: readonly string[]; readonly questions: readonly unknown[] }): { title: string; path: string } {
+  if (set.model === 'local') {
+    const mode = TRAINER_MODE_LABELS[set.types[0] ?? ''] ?? 'Vocabulary';
+    return { title: `${mode} round · ${set.questions.length} words`, path: `/vocabulary/train/${set.id}` };
+  }
+  return { title: `Practice on ${set.entryIds.length} expression${set.entryIds.length === 1 ? '' : 's'}`, path: `/vocabulary/practice/${set.id}` };
 }
 
 const DAY = 86_400_000;
@@ -96,9 +108,9 @@ export function unfinishedWork(snapshot: TodaySnapshot, now: number): WorkItem[]
   for (const set of snapshot.vocabularyPracticeSets) {
     if (set.checkedAt !== null) continue;
     const answered = set.answers.length;
-    const title = `Practice on ${plural(set.entryIds.length, 'expression')}`;
-    if (answered > 0) items.push({ id: `vocabulary-practice:${set.id}`, module: 'vocabulary', title, detail: `${answered} of ${set.questions.length} answered`, path: `/vocabulary/practice/${set.id}`, at: set.updatedAt, status: 'in_progress' });
-    else if (set.history.length === 0 && recent(set.createdAt)) items.push({ id: `vocabulary-practice:${set.id}`, module: 'vocabulary', title, detail: `${plural(set.questions.length, 'question')} · not started`, path: `/vocabulary/practice/${set.id}`, at: set.createdAt, status: 'not_started' });
+    const { title, path } = practiceSetLink(set);
+    if (answered > 0) items.push({ id: `vocabulary-practice:${set.id}`, module: 'vocabulary', title, detail: `${answered} of ${set.questions.length} answered`, path, at: set.updatedAt, status: 'in_progress' });
+    else if (set.history.length === 0 && recent(set.createdAt)) items.push({ id: `vocabulary-practice:${set.id}`, module: 'vocabulary', title, detail: `${plural(set.questions.length, 'question')} · not started`, path, at: set.createdAt, status: 'not_started' });
   }
   for (const set of snapshot.readingQuestionSets) {
     const text = texts.get(set.textId);
@@ -158,7 +170,7 @@ export function completedWork(snapshot: TodaySnapshot): WorkItem[] {
   }
   for (const set of snapshot.vocabularyPracticeSets) {
     const last = set.history.at(-1);
-    if (last) items.push({ id: `vocabulary-practice:${set.id}`, module: 'vocabulary', title: `Practice on ${plural(set.entryIds.length, 'expression')}`, detail: `Checked · ${last.correct} of ${last.objectiveTotal} correct`, path: `/vocabulary/practice/${set.id}`, at: last.checkedAt, status: 'completed' });
+    if (last) items.push({ id: `vocabulary-practice:${set.id}`, module: 'vocabulary', ...practiceSetLink(set), detail: `Checked · ${last.correct} of ${last.objectiveTotal} correct`, at: last.checkedAt, status: 'completed' });
   }
   for (const text of snapshot.readingTexts) {
     if (text.progress.completedAt !== null) items.push({ id: `reading:${text.id}`, module: 'reading', title: text.title, detail: `Finished · ${plural(text.wordCount, 'word')}`, path: `/reading/texts/${text.id}`, at: text.progress.completedAt, status: 'completed' });
@@ -193,10 +205,14 @@ export function completedWork(snapshot: TodaySnapshot): WorkItem[] {
   const saves = new Map<string, { count: number; at: number }>();
   for (const entry of snapshot.vocabularyEntries) {
     for (const rating of entry.review.history) {
+      // Trainer rounds appear as their own item; their schedule changes are not reviews.
+      if (rating.via === 'trainer') continue;
       const group = reviews.get(dayKey(rating.at)) ?? { count: 0, at: 0 };
       reviews.set(dayKey(rating.at), { count: group.count + 1, at: Math.max(group.at, rating.at) });
     }
     for (const sense of entry.senses) {
+      // Words a trainer round added appear as that round's item, not as saves.
+      if (!isSavedSense(sense)) continue;
       const group = saves.get(dayKey(sense.addedAt)) ?? { count: 0, at: 0 };
       saves.set(dayKey(sense.addedAt), { count: group.count + 1, at: Math.max(group.at, sense.addedAt) });
     }

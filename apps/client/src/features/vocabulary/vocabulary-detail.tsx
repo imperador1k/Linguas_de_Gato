@@ -34,7 +34,7 @@ export function HighlightedContext({ sentence, expression }: { sentence: string;
 type SenseLike = Pick<
   VocabularySense,
   'contextualMeaning' | 'dictionaryMeaning' | 'partOfSpeech' | 'examples' | 'collocations' | 'synonyms' | 'antonyms' | 'register' | 'patterns' | 'cefrEstimate' | 'portugueseExplanation'
->;
+> & { readonly cefr?: VocabularySense['cefr'] };
 
 /**
  * One sense of an expression as a dictionary entry: meaning in context first,
@@ -58,10 +58,16 @@ export function SenseDetail({
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <Badge variant="neutral">{sense.partOfSpeech}</Badge>
         <Badge variant="outline">{sense.register}</Badge>
-        <span className="text-muted-foreground" title="Estimated by AI; not an official level">
-          ≈ {sense.cefrEstimate} <span className="sr-only">(AI estimate)</span>
-          <span aria-hidden="true">· AI estimate</span>
-        </span>
+        {sense.cefr ? (
+          <span className="text-muted-foreground" title={`CEFR from ${sense.cefr.source}`}>
+            {sense.cefr.level} · {sense.cefr.certainty === 'estimated' ? 'estimated' : 'listed'} by {sense.cefr.source}
+          </span>
+        ) : sense.cefrEstimate ? (
+          <span className="text-muted-foreground" title="Estimated by AI; not an official level">
+            ≈ {sense.cefrEstimate} <span className="sr-only">(AI estimate)</span>
+            <span aria-hidden="true">· AI estimate</span>
+          </span>
+        ) : null}
       </div>
       {context ? (
         <blockquote className="rounded-md border-l-2 border-brand bg-muted/50 px-3.5 py-2.5 font-serif text-[1.0625rem] leading-relaxed">
@@ -137,6 +143,14 @@ export function LookupDetail({ lookup, context }: { lookup: ModelVocabularyLooku
 }
 
 export function SourceLink({ sense }: { sense: Pick<VocabularySense, 'source'> }) {
+  if (sense.source.kind === 'library') {
+    return (
+      <Link to="/vocabulary?view=library" className="inline-flex items-center gap-1 hover:underline">
+        <BookOpen aria-hidden="true" className="size-3" />
+        Vocabulary library · {sense.source.packId} v{sense.source.packVersion}
+      </Link>
+    );
+  }
   if (sense.source.kind !== 'reading') return null;
   return (
     <Link to={`/reading/texts/${sense.source.textId}`} className="inline-flex items-center gap-1 hover:underline">

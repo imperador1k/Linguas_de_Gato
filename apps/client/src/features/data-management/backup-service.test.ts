@@ -11,6 +11,9 @@ import { MediaTooLargeError, applyImport, createBackup, previewImport, readBacku
 import { IndexedDbListeningRepository } from '@/features/listening/storage/indexed-db-listening-repository';
 import { newFileSession } from '@/features/listening/storage/listening-storage';
 import { IndexedDbSpeakingRepository } from '@/features/speaking/storage/indexed-db-speaking-repository';
+import { indexedDbVocabularyRepository } from '@/features/vocabulary/storage/vocabulary-repository';
+import { finishRound, localQuestions, saveAnswer, startRound } from '@/features/vocabulary/trainer/trainer-service';
+import { NO_PACK_FILTERS, vocabularyPackSchema } from '@ldg/shared';
 
 const memoryStorage = () => {
   const values = new Map<string, string>();
@@ -274,5 +277,28 @@ describe('media kept by M8 flows', () => {
     close();
     expect(result.envelope.media.omitted.map((item) => item.store).sort()).toEqual(['media', 'speakingRecordings']);
     expect(result.envelope.media.omitted.find((item) => item.store === 'media')?.label).toContain('lecture.mp3');
+  });
+});
+
+describe('Vocabulary Trainer records', () => {
+  it('round-trip through a backup: local rounds and library words restore intact, AI sets untouched', async () => {
+    const packFiles = import.meta.glob<unknown>('../../../public/content/vocabulary/en/demo-everyday.json', { eager: true, import: 'default' });
+    const pack = vocabularyPackSchema.parse(Object.values(packFiles)[0]);
+    const source = await seeded();
+    const repository = indexedDbVocabularyRepository(source);
+    const round = (await startRound(repository, { pack, filters: NO_PACK_FILTERS, mode: 'context', count: 3, collection: [], now: NOW, seed: 'backup' }))!;
+    for (const question of localQuestions(round)) await saveAnswer(repository, round.id, { kind: 'typed', questionId: question.id, text: question.answer, hints: ['length'], answeredAt: NOW }, NOW);
+    await finishRound(repository, round.id, pack, NOW);
+
+    const backup = await exported(source, false);
+    expect(backup.stores.vocabularyPracticeSets.some((set) => (set as { model?: string }).model === 'local')).toBe(true);
+    const target = await openAppDatabase(new IDBFactory());
+    const report = await applyImport(target, backup, 'merge', { storage: null });
+    expect(report.skippedInvalid).toBe(0);
+    const restored = indexedDbVocabularyRepository(target);
+    expect(await restored.practiceSets.get(round.id)).toEqual(await repository.practiceSets.get(round.id));
+    const libraryEntries = (await restored.entries.list()).filter((entry) => entry.senses.some((sense) => sense.source.kind === 'library'));
+    expect(libraryEntries).toHaveLength(3);
+    expect(await counts(target)).toEqual(await counts(source).then((value) => ({ ...value, media: 0 })));
   });
 });

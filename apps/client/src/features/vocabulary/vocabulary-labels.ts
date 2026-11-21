@@ -1,4 +1,4 @@
-import type { ExpressionKind, VocabularyQuestionType } from '@ldg/shared';
+import type { ExpressionKind, StoredVocabularyQuestionType } from '@ldg/shared';
 
 export const KIND_LABELS: Record<ExpressionKind, string> = {
   word: 'Word',
@@ -10,7 +10,10 @@ export const KIND_LABELS: Record<ExpressionKind, string> = {
 
 export const STATUS_LABELS = { new: 'New', learning: 'Learning', known: 'Known' } as const;
 
-export const PRACTICE_TYPE_LABELS: Record<VocabularyQuestionType, { label: string; hint: string }> = {
+export const PRACTICE_TYPE_LABELS: Record<StoredVocabularyQuestionType, { label: string; hint: string }> = {
+  spelling: { label: 'Spelling', hint: 'Write the English word for a Portuguese meaning' },
+  context: { label: 'Context', hint: 'Complete a sentence with the missing word' },
+  definition: { label: 'Definition', hint: 'Write the word an English definition describes' },
   gap_fill: { label: 'Fill in the blank', hint: 'Use the expression in a new sentence' },
   meaning_choice: { label: 'Meaning in context', hint: 'Choose what it means here' },
   collocation: { label: 'Collocations', hint: 'Choose the natural word partner' },

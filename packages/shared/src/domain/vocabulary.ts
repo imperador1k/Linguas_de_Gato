@@ -1,6 +1,7 @@
 import {
   OBJECTIVE_VOCABULARY_TYPES,
   VOCABULARY_RECORD_VERSION,
+  isLocalQuestionType,
   modelVocabularyQuestionSchema,
   type ModelVocabularyLookup,
   type PracticeItem,
@@ -18,6 +19,7 @@ import {
 import { normalizeAnswer } from './grammar-answers.js';
 import { containsWords } from './reading.js';
 import { tokenizeForComparison } from './text-compare.js';
+import { matchVocabularyAnswer } from './vocabulary-answers.js';
 
 /**
  * Vocabulary logic: one collection entry per expression with distinct
@@ -52,7 +54,7 @@ export function initialReviewState(now: number): ReviewState {
  * "again": back to the start, due tomorrow. "good": one step up the ladder.
  * "easy": two steps up. From step 4 (about two weeks) an entry counts as known.
  */
-export function scheduleReview(state: ReviewState, rating: ReviewRating, now: number): ReviewState {
+export function scheduleReview(state: ReviewState, rating: ReviewRating, now: number, via?: 'trainer'): ReviewState {
   const last = REVIEW_LADDER_DAYS.length - 1;
   const step = rating === 'again' ? 1 : Math.min(last, state.step + (rating === 'easy' ? 2 : 1));
   const days: number = REVIEW_LADDER_DAYS[step] ?? REVIEW_LADDER_DAYS[last] ?? 1;
@@ -61,7 +63,7 @@ export function scheduleReview(state: ReviewState, rating: ReviewRating, now: nu
     step,
     dueAt: now + days * DAY,
     lastReviewedAt: now,
-    history: [...state.history, { at: now, rating }].slice(-20),
+    history: [...state.history, via ? { at: now, rating, via } : { at: now, rating }].slice(-20),
   };
 }
 
@@ -282,6 +284,15 @@ export function evaluateVocabularyAnswer(question: VocabularyQuestion, answer: V
       const listed = question.type !== 'own_sentence' && question.acceptedAnswers.some((accepted) => normalizeAnswer(accepted) === normalizeAnswer(answer.text));
       return listed ? 'correct' : 'open';
     }
+    // Local trainer questions: only listed answers count; near misses and wrong forms are incorrect for scoring.
+    case 'spelling':
+    case 'context':
+    case 'definition': {
+      if (answer.kind !== 'typed') return 'unanswered';
+      // A submitted empty answer is a deliberate "I don't know": answered, and not correct.
+      const verdict = matchVocabularyAnswer(answer.text, { answer: question.answer, accepted: question.accepted, forms: question.forms }, question.language).verdict;
+      return verdict === 'correct' ? 'correct' : 'incorrect';
+    }
   }
 }
 
@@ -306,7 +317,7 @@ export function withVocabularyAnswer(set: VocabularyPracticeSet, answer: Vocabul
   if (set.checkedAt !== null) return set;
   const question = set.questions.find((candidate) => candidate.id === answer.questionId);
   if (!question) return set;
-  const expected = question.type === 'meaning_choice' || question.type === 'collocation' ? 'choice' : question.type === 'matching' ? 'matching' : 'text';
+  const expected = question.type === 'meaning_choice' || question.type === 'collocation' ? 'choice' : question.type === 'matching' ? 'matching' : isLocalQuestionType(question.type) ? 'typed' : 'text';
   if (answer.kind !== expected) return set;
   return { ...set, answers: [...set.answers.filter((candidate) => candidate.questionId !== answer.questionId), answer], updatedAt: now };
 }

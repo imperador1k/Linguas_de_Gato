@@ -1,0 +1,16 @@
+{
+  "format": "linguas-de-gato-vocabulary-index",
+  "schemaVersion": 1,
+  "packs": [
+    {
+      "id": "en-demo-everyday",
+      "version": "1.0.0",
+      "language": "en",
+      "title": "Everyday English (demonstration)",
+      "description": "A small, original demonstration pack for developing and testing the Vocabulary Trainer. It is not a curated production word list.",
+      "demo": true,
+      "entryCount": 47,
+      "path": "en/demo-everyday.json"
+    }
+  ]
+}

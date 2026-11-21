@@ -1,4 +1,5 @@
 import {
+  LOCAL_PRACTICE_MODEL,
   OBJECTIVE_VOCABULARY_TYPES,
   checkVocabularySet,
   evaluateVocabularyAnswer,
@@ -17,7 +18,7 @@ import {
 } from '@ldg/shared';
 import { CircleCheck, CircleDashed, CircleX, LoaderCircle, MessageSquareText, RotateCcw, Trash } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Navigate, useNavigate, useParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { AutoGrowTextarea } from '@/components/ui/auto-grow-textarea';
 import { Badge } from '@/components/ui/badge';
@@ -335,6 +336,8 @@ export function VocabularyPracticePage() {
 
   if (set === null) return null;
   if (set === 'missing') return <PageHeader eyebrow="Vocabulary practice" title="Practice set not found" description={error ?? 'It may have been deleted.'} back={back} />;
+  // Local trainer rounds have their own page.
+  if (set.model === LOCAL_PRACTICE_MODEL) return <Navigate to={`/vocabulary/train/${set.id}`} replace />;
 
   const checked = set.checkedAt !== null;
   const score = scoreVocabularySet(set);

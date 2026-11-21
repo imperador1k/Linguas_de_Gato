@@ -91,6 +91,16 @@ export type VocabularyLookupResponse = z.infer<typeof vocabularyLookupResponseSc
 export const vocabularySourceSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('reading'), textId: z.string().min(1).max(128), title: z.string().max(160), paragraphIndex: z.number().int().nonnegative() }).strict(),
   z.object({ kind: z.literal('manual') }).strict(),
+  /** A sense added from a static vocabulary pack by training it (Vocabulary Trainer). */
+  z
+    .object({
+      kind: z.literal('library'),
+      packId: z.string().min(1).max(32),
+      packVersion: z.string().min(1).max(20),
+      entryId: z.string().min(1).max(48),
+      senseId: z.string().min(1).max(16),
+    })
+    .strict(),
 ]);
 export type VocabularySource = z.infer<typeof vocabularySourceSchema>;
 
@@ -109,7 +119,10 @@ export const vocabularySenseSchema = z
     antonyms: z.array(line(80)).max(6),
     register: z.enum(VOCABULARY_REGISTERS),
     patterns: z.array(line(120)).max(5),
-    cefrEstimate: cefrEstimateSchema,
+    /** The AI's estimate (lookups); null when there is none (library senses carry `cefr` instead). */
+    cefrEstimate: cefrEstimateSchema.nullable(),
+    /** Curated CEFR metadata from a vocabulary pack, with its source. Absent for lookups. */
+    cefr: z.object({ level: cefrEstimateSchema, source: z.string().min(1).max(120), certainty: z.enum(['listed', 'estimated']) }).strict().nullable().optional(),
     portugueseExplanation: z.string().max(600).nullable(),
     addedAt: z.number().int().nonnegative(),
   })
@@ -127,8 +140,12 @@ export const reviewStateSchema = z
     step: z.number().int().min(0).max(10),
     dueAt: z.number().int().nonnegative(),
     lastReviewedAt: z.number().int().nonnegative().nullable(),
-    /** The most recent ratings, newest last (kept short). */
-    history: z.array(z.object({ at: z.number().int().nonnegative(), rating: z.enum(REVIEW_RATINGS) }).strict()).max(20),
+    /**
+     * The most recent ratings, newest last (kept short). `via: 'trainer'` marks a
+     * schedule change made by a checked trainer round: the round itself is the
+     * evidence, so these are not counted again as reviews.
+     */
+    history: z.array(z.object({ at: z.number().int().nonnegative(), rating: z.enum(REVIEW_RATINGS), via: z.literal('trainer').optional() }).strict()).max(20),
   })
   .strict();
 export type ReviewState = z.infer<typeof reviewStateSchema>;
@@ -157,8 +174,25 @@ export const VOCABULARY_QUESTION_TYPES = ['gap_fill', 'meaning_choice', 'colloca
 export const vocabularyQuestionTypeSchema = z.enum(VOCABULARY_QUESTION_TYPES);
 export type VocabularyQuestionType = z.infer<typeof vocabularyQuestionTypeSchema>;
 
+/**
+ * Questions built locally from a vocabulary pack (Vocabulary Trainer). They are
+ * never requested from the AI: the generation request and the model schema keep
+ * using `VOCABULARY_QUESTION_TYPES` only.
+ */
+export const LOCAL_VOCABULARY_QUESTION_TYPES = ['spelling', 'context', 'definition'] as const;
+export type LocalVocabularyQuestionType = (typeof LOCAL_VOCABULARY_QUESTION_TYPES)[number];
+/** Every type a stored practice set may contain. */
+export const storedVocabularyQuestionTypeSchema = z.enum([...VOCABULARY_QUESTION_TYPES, ...LOCAL_VOCABULARY_QUESTION_TYPES]);
+export type StoredVocabularyQuestionType = z.infer<typeof storedVocabularyQuestionTypeSchema>;
+/** `model` of a practice set built in the browser, without AI. */
+export const LOCAL_PRACTICE_MODEL = 'local';
+
 /** Scored deterministically against the key. */
-export const OBJECTIVE_VOCABULARY_TYPES: ReadonlySet<VocabularyQuestionType> = new Set(['gap_fill', 'meaning_choice', 'collocation', 'matching']);
+export const OBJECTIVE_VOCABULARY_TYPES: ReadonlySet<StoredVocabularyQuestionType> = new Set(['gap_fill', 'meaning_choice', 'collocation', 'matching', ...LOCAL_VOCABULARY_QUESTION_TYPES]);
+
+export function isLocalQuestionType(type: StoredVocabularyQuestionType): type is LocalVocabularyQuestionType {
+  return (LOCAL_VOCABULARY_QUESTION_TYPES as readonly string[]).includes(type);
+}
 
 export const practiceItemSchema = z
   .object({
@@ -215,8 +249,43 @@ export const vocabularyQuestionSchema = z.discriminatedUnion('type', [
   z.object({ ...questionBase, type: z.literal('sentence_completion'), acceptedAnswers: z.array(line(240)).min(1).max(5) }).strict(),
   z.object({ ...questionBase, type: z.literal('paraphrase'), acceptedAnswers: z.array(line(240)).min(1).max(5) }).strict(),
   z.object({ ...questionBase, type: z.literal('own_sentence') }).strict(),
+  ...localQuestionSchemas(),
 ]);
 export type VocabularyQuestion = z.infer<typeof vocabularyQuestionSchema>;
+export type LocalVocabularyQuestion = Extract<VocabularyQuestion, { type: LocalVocabularyQuestionType }>;
+
+function localQuestionSchemas() {
+  const term = z.string().trim().min(1).max(80);
+  const local = {
+    ...questionBase,
+    /** `itemId` for local questions is the pack reference "packId/entryId/senseId". */
+    language: languageCodeSchema,
+    lemma: term,
+    /** The answer the prompt asks for (the lemma, or the inflected form a sentence needs). */
+    answer: term,
+    /** Other answers that are genuinely correct. Nothing else is accepted. */
+    accepted: z.array(term).max(12),
+    /** Other forms of the same word, recognised as "right word, wrong form". */
+    forms: z.array(term).max(16),
+    ref: z
+      .object({
+        packId: z.string().min(1).max(32),
+        packVersion: z.string().min(1).max(20),
+        entryId: z.string().min(1).max(48),
+        senseId: z.string().min(1).max(16),
+        contextId: z.string().min(1).max(24).nullable(),
+      })
+      .strict(),
+  };
+  return [
+    /** Prompt: the Portuguese translation(s). */
+    z.object({ ...local, type: z.literal('spelling') }).strict(),
+    /** Prompt: a sentence with one gap; `clue` is the semantic hint. */
+    z.object({ ...local, type: z.literal('context'), clue: z.string().max(300).nullable() }).strict(),
+    /** Prompt: an English definition. */
+    z.object({ ...local, type: z.literal('definition') }).strict(),
+  ] as const;
+}
 
 // --- Open-answer evaluation ----------------------------------------------------------------------
 
@@ -254,11 +323,25 @@ export type VocabularyEvaluationResponse = z.infer<typeof vocabularyEvaluationRe
 
 // --- Stored practice sets --------------------------------------------------------------------------
 
+/** Hints a trainer question can give: the number of letters, the first letter, one more letter. */
+export const TRAINER_HINTS = ['length', 'first_letter', 'letter'] as const;
+export type TrainerHint = (typeof TRAINER_HINTS)[number];
+
 export const vocabularyAnswerSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('choice'), questionId: z.string().min(1).max(16), selectedIndex: z.number().int().min(0).max(3) }).strict(),
   z.object({ kind: z.literal('text'), questionId: z.string().min(1).max(16), text: z.string().max(VOCABULARY_LIMITS.maxAnswerChars) }).strict(),
   /** Matching: for each pair (by position), the index of the meaning the learner chose. */
   z.object({ kind: z.literal('matching'), questionId: z.string().min(1).max(16), choices: z.array(z.number().int().min(-1).max(5)).max(6) }).strict(),
+  /** A typed answer to a local trainer question, with the hints the learner asked for before answering. */
+  z
+    .object({
+      kind: z.literal('typed'),
+      questionId: z.string().min(1).max(16),
+      text: z.string().max(VOCABULARY_LIMITS.maxAnswerChars),
+      hints: z.array(z.enum(TRAINER_HINTS)).max(20),
+      answeredAt: z.number().int().nonnegative(),
+    })
+    .strict(),
 ]);
 export type VocabularyAnswer = z.infer<typeof vocabularyAnswerSchema>;
 
@@ -272,7 +355,7 @@ export const vocabularyPracticeSetSchema = z.object({
   version: z.literal(VOCABULARY_RECORD_VERSION),
   /** The entries practised, for display and cleanup. */
   entryIds: z.array(z.string().min(1).max(128)).min(1).max(VOCABULARY_LIMITS.maxPracticeItems),
-  types: z.array(vocabularyQuestionTypeSchema).min(1),
+  types: z.array(storedVocabularyQuestionTypeSchema).min(1),
   questions: z.array(vocabularyQuestionSchema).min(1).max(VOCABULARY_LIMITS.maxQuestions),
   /** Matching meanings are shown shuffled; this is the display order per matching question. */
   shuffles: z.record(z.string(), z.array(z.number().int().min(0).max(5))),

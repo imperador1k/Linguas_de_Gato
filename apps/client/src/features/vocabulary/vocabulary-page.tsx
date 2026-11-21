@@ -1,5 +1,7 @@
 import {
   EXPRESSION_KINDS,
+  LOCAL_PRACTICE_MODEL,
+  NO_PACK_FILTERS,
   VOCABULARY_LIMITS,
   VOCABULARY_QUESTION_TYPES,
   VOCABULARY_RECORD_VERSION,
@@ -8,11 +10,13 @@ import {
   seededShuffle,
   toPracticeItem,
   type ExpressionKind,
+  type PackFilters,
   type VocabularyEntry,
+  type VocabularyPackSummary,
   type VocabularyPracticeSet,
   type VocabularyQuestionType,
 } from '@ldg/shared';
-import { ArrowRight, BookOpenText, LoaderCircle, Repeat, Sparkles, Trash } from 'lucide-react';
+import { ArrowRight, BookOpenText, Dumbbell, Library, LoaderCircle, Repeat, Sparkles, Trash } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
@@ -31,10 +35,12 @@ import { describeStorageFailure } from '@/lib/storage/feature-storage';
 import { useElapsedSeconds } from '@/lib/use-elapsed-seconds';
 import { useGenerationJob } from '@/lib/use-generation-job';
 import { cn } from '@/lib/utils';
+import { LibraryView } from './library/library-view';
 import { vocabularyStorage, type VocabularyRepository } from './storage/vocabulary-repository';
+import { TrainerSetup } from './trainer/trainer-setup';
 import { dateFormatter, describeDue, KIND_LABELS, PRACTICE_TYPE_LABELS, STATUS_LABELS } from './vocabulary-labels';
 
-type View = 'collection' | 'practice';
+type View = 'collection' | 'library' | 'practice';
 
 function PracticeGenerator({
   repository,
@@ -187,7 +193,9 @@ export function VocabularyPage() {
   const capabilities = useCapabilities();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const view: View = params.get('view') === 'practice' ? 'practice' : 'collection';
+  const requestedView = params.get('view');
+  const view: View = requestedView === 'practice' || requestedView === 'library' ? requestedView : 'collection';
+  const [trainer, setTrainer] = useState<{ open: boolean; key: number; pack: VocabularyPackSummary | null; filters: PackFilters }>({ open: false, key: 0, pack: null, filters: NO_PACK_FILTERS });
   const [entries, setEntries] = useState<VocabularyEntry[] | null>(null);
   const [sets, setSets] = useState<VocabularyPracticeSet[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -234,7 +242,17 @@ export function VocabularyPage() {
       },
       { replace: true },
     );
-  const setView = (next: View) => updateParams((result) => (next === 'practice' ? result.set('view', 'practice') : result.delete('view')));
+  const setView = (next: View) => updateParams((result) => (next === 'collection' ? result.delete('view') : result.set('view', next)));
+  const openTrainer = useCallback((pack: VocabularyPackSummary | null = null, filters: PackFilters = NO_PACK_FILTERS) => setTrainer((current) => ({ open: true, key: current.key + 1, pack, filters })), []);
+  // "New round" from a finished round links here with ?train=1.
+  const trainParam = params.get('train') === '1';
+  useEffect(() => {
+    if (trainParam && storage) openTrainer();
+  }, [trainParam, storage, openTrainer]);
+  const closeTrainer = () => {
+    setTrainer((current) => ({ ...current, open: false }));
+    if (trainParam) updateParams((result) => result.delete('train'));
+  };
   const closePanel = () => {
     setPanel((current) => ({ ...current, open: false }));
     setDirty(false);
@@ -273,13 +291,21 @@ export function VocabularyPage() {
       <PageHeader
         eyebrow="Vocabulary"
         title="Your personal dictionary."
-        description="Expressions you met while reading, kept with the sentence you found them in, what they meant there, and how they are used."
+        description="Expressions you met while reading or trained from the library, with the sentence they come from, what they mean and how they are used."
         actions={
-          storage && hasEntries ? (
-            <Button variant="secondary" onClick={openPanel}>
-              <Sparkles aria-hidden="true" />
-              Practise
-            </Button>
+          storage ? (
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => openTrainer()}>
+                <Dumbbell aria-hidden="true" />
+                Train
+              </Button>
+              {hasEntries ? (
+                <Button variant="secondary" onClick={openPanel}>
+                  <Sparkles aria-hidden="true" />
+                  Practise with AI
+                </Button>
+              ) : null}
+            </div>
           ) : null
         }
       />
@@ -296,18 +322,6 @@ export function VocabularyPage() {
         <p role="status" className="text-sm text-muted-foreground">
           Reading your vocabulary…
         </p>
-      ) : entries.length === 0 ? (
-        <EmptyState
-          title="Nothing saved yet."
-          action={
-            <Link to="/reading" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
-              <BookOpenText aria-hidden="true" />
-              Go to Reading
-            </Link>
-          }
-        >
-          Open a text in Reading, select a word or expression, look it up, and save it. It joins your collection and the review queue.
-        </EmptyState>
       ) : (
         <>
           <TabList
@@ -318,11 +332,32 @@ export function VocabularyPage() {
             className="mb-5"
             items={[
               { value: 'collection', label: 'Collection', adornment: <span className="text-xs font-normal text-muted-foreground tabular-nums">{entries.length}</span> },
+              { value: 'library', label: 'Library' },
               { value: 'practice', label: 'Practice sets', adornment: <span className="text-xs font-normal text-muted-foreground tabular-nums">{sets.length}</span> },
             ]}
           />
           <div {...tabPanelProps(idBase, view)} className="flex flex-col gap-4">
-            {view === 'collection' ? (
+            {view === 'library' ? (
+              <LibraryView collection={entries} onTrain={(pack, filters) => openTrainer(pack, filters)} />
+            ) : view === 'collection' && entries.length === 0 ? (
+              <EmptyState
+                title="Nothing saved yet."
+                action={
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => setView('library')}>
+                      <Library aria-hidden="true" />
+                      Browse the library
+                    </Button>
+                    <Link to="/reading" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
+                      <BookOpenText aria-hidden="true" />
+                      Go to Reading
+                    </Link>
+                  </div>
+                }
+              >
+                Train words from the library, or open a text in Reading, select an expression, look it up and save it. Either way it joins your collection and the review queue.
+              </EmptyState>
+            ) : view === 'collection' ? (
               <>
                 {entries.length >= SEARCH_THRESHOLD ? (
                 <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
@@ -413,27 +448,39 @@ export function VocabularyPage() {
               <EmptyState
                 title="No practice sets yet."
                 action={
-                  <Button size="sm" variant="secondary" onClick={openPanel}>
-                    <Sparkles aria-hidden="true" />
-                    Practise
-                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" onClick={() => openTrainer()}>
+                      <Dumbbell aria-hidden="true" />
+                      Train
+                    </Button>
+                    {hasEntries ? (
+                      <Button size="sm" variant="secondary" onClick={openPanel}>
+                        <Sparkles aria-hidden="true" />
+                        Practise with AI
+                      </Button>
+                    ) : null}
+                  </div>
                 }
               >
-                Generate exercises from your collection or a selection of it: gap fills, meanings, collocations and your own sentences.
+                Train words from the library in your browser, or generate AI exercises from your collection: gap fills, meanings, collocations and your own sentences.
               </EmptyState>
             ) : (
               <ul className="divide-y rounded-lg border bg-card" aria-label="Practice sets">
                 {sets.map((set) => {
                   const score = scoreVocabularySet(set);
                   const last = set.history.at(-1);
-                  const statusLabel = last ? `Last ${last.correct}/${last.objectiveTotal} objective` : score.answered > 0 ? `In progress · ${score.answered}/${score.total}` : 'Not started';
+                  const local = set.model === LOCAL_PRACTICE_MODEL;
+                  const statusLabel = last ? `Last ${last.correct}/${last.objectiveTotal}${local ? ' correct' : ' objective'}` : score.answered > 0 ? `In progress · ${score.answered}/${score.total}` : 'Not started';
                   return (
                     <li key={set.id} className="flex items-center gap-2 px-3 py-2 sm:px-4">
-                      <Link to={`/vocabulary/practice/${set.id}`} className="group min-w-0 flex-1 rounded-md py-1.5">
+                      <Link to={local ? `/vocabulary/train/${set.id}` : `/vocabulary/practice/${set.id}`} className="group min-w-0 flex-1 rounded-md py-1.5">
                         <span className="flex items-center gap-2">
                           <span className="font-medium group-hover:underline">
-                            {set.questions.length} questions · {set.entryIds.length} expressions
+                            {local ? `${PRACTICE_TYPE_LABELS[set.types[0] ?? 'spelling'].label} round · ${set.questions.length} words` : `${set.questions.length} questions · ${set.entryIds.length} expressions`}
                           </span>
+                          <Badge variant={local ? 'outline' : 'neutral'} className="px-2 py-0">
+                            {local ? 'Trainer' : 'AI'}
+                          </Badge>
                           <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                         </span>
                         <span className="mt-1 block text-xs text-muted-foreground">
@@ -463,6 +510,12 @@ export function VocabularyPage() {
               <PracticeGenerator repository={storage.repository} entries={entries} selected={selected} onDirtyChange={setDirty} onCreated={(set) => navigate(`/vocabulary/practice/${set.id}`)} />
             )
           ) : null}
+        </SidePanel>
+      ) : null}
+
+      {storage && entries ? (
+        <SidePanel key={`trainer-${trainer.key}`} open={trainer.open} onClose={closeTrainer} title="Train" description="Practise words from the library in your browser: spelling, context or definitions.">
+          {trainer.open ? <TrainerSetup repository={storage.repository} collection={entries} pack={trainer.pack} filters={trainer.filters} /> : null}
         </SidePanel>
       ) : null}
 

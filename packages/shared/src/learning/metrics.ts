@@ -1,6 +1,7 @@
 import { readingOutcome } from '../domain/reading.js';
 import { questionOutcome } from '../domain/exercise-generation.js';
 import { countWords } from '../contracts/writing.js';
+import { entrySavedAt, isSavedSense } from '../domain/vocabulary-trainer.js';
 import type { LearningModule, LearningSnapshot } from './observations.js';
 
 /**
@@ -112,8 +113,10 @@ export function activityEvents(snapshot: LearningSnapshot): ActivityEvent[] {
   for (const text of snapshot.readingTexts) if (text.progress.completedAt !== null) events.push({ module: 'reading', at: text.progress.completedAt, label: 'Text finished' });
   for (const set of snapshot.readingQuestionSets) if (set.submittedAt !== null) events.push({ module: 'reading', at: set.submittedAt, label: 'Reading comprehension checked' });
   for (const entry of snapshot.vocabularyEntries) {
-    for (const sense of entry.senses) events.push({ module: 'vocabulary', at: sense.addedAt, label: 'Expression saved' });
-    for (const rating of entry.review.history) events.push({ module: 'vocabulary', at: rating.at, label: 'Vocabulary review' });
+    // Senses added by a trainer round are part of that round (counted below), not saves.
+    for (const sense of entry.senses) if (isSavedSense(sense)) events.push({ module: 'vocabulary', at: sense.addedAt, label: 'Expression saved' });
+    // Trainer schedule changes are part of the trainer round (counted below), not separate reviews.
+    for (const rating of entry.review.history) if (rating.via !== 'trainer') events.push({ module: 'vocabulary', at: rating.at, label: 'Vocabulary review' });
   }
   for (const set of snapshot.vocabularyPracticeSets) for (const round of set.history) events.push({ module: 'vocabulary', at: round.checkedAt, label: 'Vocabulary practice checked' });
   return events.sort((a, b) => a.at - b.at);
@@ -164,7 +167,7 @@ export function computeMetrics(snapshot: LearningSnapshot, range: DateRange): Le
   }
 
   // Vocabulary
-  const reviews = snapshot.vocabularyEntries.flatMap((entry) => entry.review.history.filter((rating) => inRange(rating.at, range)));
+  const reviews = snapshot.vocabularyEntries.flatMap((entry) => entry.review.history.filter((rating) => rating.via !== 'trainer' && inRange(rating.at, range)));
   const practiceRounds = snapshot.vocabularyPracticeSets.flatMap((set) => set.history.filter((round) => inRange(round.checkedAt, range)));
 
   const modules: ModuleMetrics = {
@@ -205,8 +208,12 @@ export function computeMetrics(snapshot: LearningSnapshot, range: DateRange): Le
       comprehension: ratio(readingCorrect, readingTotal),
     },
     vocabulary: {
-      entriesSaved: snapshot.vocabularyEntries.filter((entry) => inRange(entry.createdAt, range)).length,
-      meaningsSaved: snapshot.vocabularyEntries.flatMap((entry) => entry.senses).filter((sense) => inRange(sense.addedAt, range)).length,
+      // Only what the learner saved; words a trainer round added are not "saved" (see isSavedSense).
+      entriesSaved: snapshot.vocabularyEntries.filter((entry) => {
+        const savedAt = entrySavedAt(entry);
+        return savedAt !== null && inRange(savedAt, range);
+      }).length,
+      meaningsSaved: snapshot.vocabularyEntries.flatMap((entry) => entry.senses).filter((sense) => isSavedSense(sense) && inRange(sense.addedAt, range)).length,
       reviews: reviews.length,
       reviewsRemembered: reviews.filter((rating) => rating.rating !== 'again').length,
       practiceRoundsChecked: practiceRounds.length,
