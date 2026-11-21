@@ -1,6 +1,7 @@
 import { transcriptionResultSchema, type TranscriptionOptions, type TranscriptionResult } from '@ldg/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, apiUpload } from '@/lib/api-client';
+import { useWorkInProgress } from '@/lib/work-in-progress';
 
 export type TranscriptionJobState =
   | { readonly phase: 'idle' }
@@ -32,6 +33,7 @@ function describeError(error: unknown): string {
 export function useTranscriptionJob() {
   const [state, setState] = useState<TranscriptionJobState>({ phase: 'idle' });
   const controllerRef = useRef<AbortController | null>(null);
+  useWorkInProgress(isTranscriptionBusy(state));
 
   // Leaving the page cancels the request instead of letting it finish unseen.
   useEffect(() => () => controllerRef.current?.abort(), []);

@@ -1,6 +1,7 @@
 import { generationResponseSchema, type GenerationRequest, type GenerationResponse } from '@ldg/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, apiPost } from '@/lib/api-client';
+import { useWorkInProgress } from '@/lib/work-in-progress';
 
 export type GenerationJobState =
   | { readonly phase: 'idle' }
@@ -16,6 +17,7 @@ export type GenerationJobState =
 export function useGenerationJob() {
   const [state, setState] = useState<GenerationJobState>({ phase: 'idle' });
   const controllerRef = useRef<AbortController | null>(null);
+  useWorkInProgress(state.phase === 'running');
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 

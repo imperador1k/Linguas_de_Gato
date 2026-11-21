@@ -6,6 +6,9 @@ import {
   healthResponseSchema,
 } from '@ldg/shared';
 import type { FastifyInstance } from 'fastify';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { buildApp } from '../src/app.js';
@@ -157,6 +160,35 @@ describe('error handling', () => {
 
     expect(response.statusCode).toBe(413);
     expect(apiErrorResponseSchema.parse(response.json()).error.code).toBe('PAYLOAD_TOO_LARGE');
+  });
+
+  it('serves the client with caching that lets a running tab notice a new build', async () => {
+    const dist = await mkdtemp(join(tmpdir(), 'ldg-dist-'));
+    try {
+      await mkdir(join(dist, 'assets'));
+      await writeFile(join(dist, 'index.html'), '<!doctype html><title>t</title>');
+      await writeFile(join(dist, 'version.json'), '{"buildId":"b1"}');
+      await writeFile(join(dist, 'assets', 'index-abc123.js'), 'console.log(1)');
+      const server = await build({ clientDistDir: dist });
+
+      const version = await server.inject({ method: 'GET', url: '/version.json' });
+      expect(version.statusCode).toBe(200);
+      expect(version.headers['cache-control']).toBe('no-cache');
+
+      const asset = await server.inject({ method: 'GET', url: '/assets/index-abc123.js' });
+      expect(asset.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+
+      const root = await server.inject({ method: 'GET', url: '/' });
+      expect(root.headers['cache-control']).toBe('no-cache');
+
+      const deepLink = await server.inject({ method: 'GET', url: '/writing/tasks/x', headers: { accept: 'text/html' } });
+      expect(deepLink.statusCode).toBe(200);
+      expect(deepLink.headers['cache-control']).toBe('no-cache');
+    } finally {
+      await app?.close();
+      app = undefined;
+      await rm(dist, { recursive: true, force: true });
+    }
   });
 
   it('hides internal error details', async () => {

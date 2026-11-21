@@ -33,6 +33,7 @@ import { RecorderPanel } from './recorder/recorder-panel';
 import { useAudioRecorder } from './recorder/use-audio-recorder';
 import { describeSpeakingStorageError, rememberRecording, useSpeakingStorage } from './storage/speaking-storage';
 import { TranscriptReview } from './transcript-review';
+import { useWorkInProgress } from '@/lib/work-in-progress';
 
 interface LoadedTask {
   readonly prompt: SpeakingPrompt;
@@ -342,6 +343,7 @@ export function SpeakingPracticePage() {
 
   // Leaving mid-practice would discard the recording or the transcript: ask first.
   const blocker = useBlocker(({ currentLocation, nextLocation }) => hasWork && !saving && currentLocation.pathname !== nextLocation.pathname);
+  useWorkInProgress(hasWork);
   useEffect(() => {
     if (!hasWork) return;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();

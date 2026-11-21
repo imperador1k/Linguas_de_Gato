@@ -66,7 +66,7 @@ export function ProgressPage() {
         body = <RecommendationsSection derived={derived} repository={storage.repository} onChanged={engine.reload} />;
         break;
       case 'training':
-        body = <TrainingSection key={params.get('category') ?? ''} derived={derived} repository={storage.repository} sessions={state.data.trainingSessions} initialCategory={params.get('category')} onCreated={engine.reload} />;
+        body = <TrainingSection derived={derived} sessions={state.data.trainingSessions} initialCategory={params.get('category')} />;
         break;
     }
   }

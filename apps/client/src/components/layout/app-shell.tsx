@@ -7,6 +7,7 @@ import { useTheme } from '@/lib/theme';
 import { BrandMark } from './brand-mark';
 import { SettingsNavItem, SidebarNav } from './sidebar-nav';
 import { ThemeSwitcher } from './theme-switcher';
+import { UpdateBanner } from './update-banner';
 
 const APP_NAME = 'Linguas de Gato';
 
@@ -131,6 +132,7 @@ export function AppShell() {
 
       <main id="main" ref={mainRef} tabIndex={-1} className="min-w-0 outline-none">
         <div className="mx-auto w-full max-w-6xl px-4 pt-8 pb-16 sm:px-8 sm:pt-12 lg:px-12">
+          <UpdateBanner />
           <Outlet />
         </div>
       </main>

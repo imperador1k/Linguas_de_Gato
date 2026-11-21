@@ -1,6 +1,7 @@
 import { CATEGORY_INFO, errorTimeline, trainingOptionsFor, type CategoryInsight, type LearningObservation } from '@ldg/shared';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router';
+import { practisePath } from '@/features/personalized-training/targeted-practice';
 import { Sparkline } from '@/features/progress/activity-chart';
 import { CONFIDENCE_LABELS, EVIDENCE_LABELS, KIND_LABELS, MODULE_LABELS, STATUS_LABELS, TREND_LABELS, formatDate } from '@/features/progress/format';
 import { Badge } from '@/components/ui/badge';
@@ -107,7 +108,7 @@ export function InsightCard({ insight, observations, allObservations, now }: { i
           <p className="text-xs text-muted-foreground">{info.description}</p>
           <EvidenceList observations={observations} />
           {trainable ? (
-            <Link to={`/progress/training?category=${insight.category}`} className="w-fit text-sm font-medium text-brand hover:underline">
+            <Link to={practisePath(insight.category) ?? `/progress/training?category=${insight.category}`} className="w-fit text-sm font-medium text-brand hover:underline">
               Practise {info.label.toLowerCase()} with targeted exercises
             </Link>
           ) : null}

@@ -10,7 +10,8 @@ import { Notice } from '@/components/ui/notice';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { estimateStorage, requestPersistentStorage } from '../listening/storage/listening-storage';
 import { isEdited, toAssessmentRequest } from './attempt';
-import { AssessmentView } from './assessment-view';
+import { AssessmentView, HighlightedText } from './assessment-view';
+import { highlightsFor } from './issue-highlights';
 import { ExerciseCard } from './exercise-card';
 import { FluencyPanel } from './fluency-panel';
 import { CATEGORY_LABELS } from './prompt-library';
@@ -283,8 +284,41 @@ export function SpeakingAttemptPage() {
         </Notice>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      {/* Your answer first: recording (first on small screens) and transcript, then the feedback on it. */}
+      <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
         <div className="flex min-w-0 flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>What you said</CardTitle>
+              <CardDescription>
+                {editedCount > 0 ? `Your confirmed transcript. You corrected ${editedCount} ${editedCount === 1 ? 'segment' : 'segments'} where speech recognition misheard you.` : 'Your confirmed transcript.'}
+                {assessment && assessment.issues.length > 0 ? ' Underlined passages have a numbered correction below.' : ''}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-1">
+              <ol className="flex flex-col gap-1">
+                {attempt.transcript.segments.map((segment) => (
+                  <li key={segment.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3 py-1.5">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 justify-start px-1.5 font-mono text-xs tabular-nums"
+                      disabled={!onSeek}
+                      onClick={() => onSeek?.(segment.startMs)}
+                      aria-label={`Play from ${formatTimestamp(segment.startMs / 1000)}`}
+                    >
+                      {formatTimestamp(segment.startMs / 1000)}
+                    </Button>
+                    <p className="font-serif text-[1.0625rem] leading-relaxed" lang="en">
+                      {assessment ? <HighlightedText text={segment.text} highlights={highlightsFor(segment.text, segment.id, assessment.issues)} /> : segment.text}
+                      {isEdited(segment) ? <span className="ml-2 font-sans text-xs text-brand">corrected</span> : null}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </CardContent>
+          </Card>
+
           {assessment ? (
             <>
               <AssessmentView assessment={assessment} onSeek={onSeek} />
@@ -363,43 +397,13 @@ export function SpeakingAttemptPage() {
               </CardContent>
             </Card>
           )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Transcript</CardTitle>
-              <CardDescription>
-                {editedCount > 0
-                  ? `You corrected ${editedCount} ${editedCount === 1 ? 'segment' : 'segments'} where speech recognition misheard you.`
-                  : 'As confirmed by you.'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-1">
-              <ol className="flex flex-col gap-1">
-                {attempt.transcript.segments.map((segment) => (
-                  <li key={segment.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-3 py-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 justify-start px-1.5 font-mono text-xs tabular-nums"
-                      disabled={!onSeek}
-                      onClick={() => onSeek?.(segment.startMs)}
-                      aria-label={`Play from ${formatTimestamp(segment.startMs / 1000)}`}
-                    >
-                      {formatTimestamp(segment.startMs / 1000)}
-                    </Button>
-                    <p className="font-serif text-[1.0625rem] leading-relaxed" lang="en">
-                      {segment.text}
-                      {isEdited(segment) ? <span className="ml-2 font-sans text-xs text-brand">corrected</span> : null}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            </CardContent>
-          </Card>
         </div>
 
-        <div className="flex min-w-0 flex-col gap-6">
-          <RecordingCard attempt={attempt} recording={recording} audioRef={audioRef} storage={storage} onChange={setAttempt} />
+        {/* `contents` below xl lets the recording move to the top of the page while fluency stays after the feedback. */}
+        <div className="contents min-w-0 xl:flex xl:flex-col xl:gap-6">
+          <div className="order-first min-w-0 xl:order-none">
+            <RecordingCard attempt={attempt} recording={recording} audioRef={audioRef} storage={storage} onChange={setAttempt} />
+          </div>
           <FluencyPanel fluency={attempt.fluency} onSeek={onSeek} />
         </div>
       </div>

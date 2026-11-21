@@ -5,6 +5,7 @@ import { SectionHeading } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Notice } from '@/components/ui/notice';
+import { practisePath } from '@/features/personalized-training/targeted-practice';
 import { formatDate } from '@/features/progress/format';
 import type { LearningRepository } from '@/features/progress/storage/learning-repository';
 import type { DerivedLearning } from '@/features/progress/use-learning-engine';
@@ -36,7 +37,7 @@ function RecommendationCard({ recommendation, derived, busy, onAct }: { recommen
       ) : null}
       <div className="flex flex-wrap gap-2">
         {action.type === 'train' ? (
-          <Link to={`/progress/training?category=${action.category}`} className={buttonVariants({ size: 'sm' })}>
+          <Link to={practisePath(action.category) ?? `/progress/training?category=${action.category}`} className={buttonVariants({ size: 'sm' })}>
             Practise this
           </Link>
         ) : (

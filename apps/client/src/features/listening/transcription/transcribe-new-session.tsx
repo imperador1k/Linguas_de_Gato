@@ -48,7 +48,7 @@ function Unavailable({ children }: { children: React.ReactNode }) {
  * Upload → transcribe → a new persistent session with the transcript, opened
  * straight away so the learner can read along or start dictation.
  */
-export function TranscribeNewSession({ storage }: { storage: ListeningStorage | null }) {
+export function TranscribeNewSession({ storage, onDirtyChange }: { storage: ListeningStorage | null; onDirtyChange?: (dirty: boolean, busy: boolean) => void }) {
   const capabilities = useCapabilities();
   const navigate = useNavigate();
   const [selection, setSelection] = useState<{ file: File; accepted: AcceptedMediaFile } | null>(null);
@@ -56,6 +56,8 @@ export function TranscribeNewSession({ storage }: { storage: ListeningStorage | 
   const job = useTranscriptionJob();
   const duration = useMediaDuration(selection?.file ?? null);
   const busy = isTranscriptionBusy(job.state);
+  // A chosen file or a running upload is work the creation panel must not drop silently.
+  useEffect(() => onDirtyChange?.(busy || selection !== null, busy), [busy, selection, onDirtyChange]);
 
   if (capabilities.status === 'loading') {
     return (

@@ -11,19 +11,25 @@ import {
   type ReadingTextType,
   type WritingCategory,
 } from '@ldg/shared';
-import { BookOpenText, CircleCheck, ClipboardPaste, LoaderCircle, ShieldCheck, Sparkles, Trash } from 'lucide-react';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { ArrowRight, BookOpenText, CircleCheck, ClipboardPaste, LoaderCircle, Plus, ShieldCheck, Sparkles, Trash } from 'lucide-react';
+import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
 import { AutoGrowTextarea } from '@/components/ui/auto-grow-textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChoiceGroup, FIELD_CLASS, SELECT_CLASS } from '@/components/ui/choice-group';
+import { ContinueCard } from '@/components/ui/continue-card';
 import { ConfirmDialog } from '@/components/ui/dialog';
+import { EmptyState } from '@/components/ui/empty-state';
+import { HelpDisclosure } from '@/components/ui/help-disclosure';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Notice } from '@/components/ui/notice';
+import { PrivacyNote } from '@/components/ui/privacy-note';
+import { FILTER_CONTROL, resultCount, SEARCH_THRESHOLD, SearchField } from '@/components/ui/search-field';
+import { SidePanel } from '@/components/ui/side-panel';
+import { TabList, tabPanelProps } from '@/components/ui/tabs';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { describeStorageFailure } from '@/lib/storage/feature-storage';
 import { useElapsedSeconds } from '@/lib/use-elapsed-seconds';
@@ -39,7 +45,9 @@ function newRecord(fields: Omit<ReadingTextRecord, 'id' | 'version' | 'language'
   return { ...fields, id: crypto.randomUUID(), version: READING_RECORD_VERSION, language: 'en', progress: { furthestParagraph: 0, completedAt: null, lastOpenedAt: now }, createdAt: now, updatedAt: now };
 }
 
-function GenerateText({ repository, onCreated }: { repository: ReadingRepository; onCreated: (record: ReadingTextRecord) => void }) {
+type CreateProps = { repository: ReadingRepository; onCreated: (record: ReadingTextRecord) => void; onDirtyChange: (dirty: boolean) => void };
+
+function GenerateText({ repository, onCreated, onDirtyChange }: CreateProps) {
   const job = useGenerationJob();
   const [level, setLevel] = useState<ReadingLevel>('C1');
   const [textType, setTextType] = useState<ReadingTextType>('article');
@@ -51,6 +59,8 @@ function GenerateText({ repository, onCreated }: { repository: ReadingRepository
   const running = job.state.phase === 'running';
   const elapsed = useElapsedSeconds(job.state.phase === 'running' ? job.state.startedAt : null);
   const id = useId();
+
+  useEffect(() => onDirtyChange(running), [running, onDirtyChange]);
 
   async function generate() {
     setSaveError(null);
@@ -142,7 +152,7 @@ function GenerateText({ repository, onCreated }: { repository: ReadingRepository
         ) : (
           <Button onClick={() => void generate()}>
             <Sparkles aria-hidden="true" />
-            Generate a text
+            Generate
           </Button>
         )}
       </div>
@@ -162,13 +172,15 @@ function GenerateText({ repository, onCreated }: { repository: ReadingRepository
   );
 }
 
-function ImportText({ repository, onCreated }: { repository: ReadingRepository; onCreated: (record: ReadingTextRecord) => void }) {
+function ImportText({ repository, onCreated, onDirtyChange }: CreateProps) {
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
   const [level, setLevel] = useState<ReadingLevel | ''>('');
   const [error, setError] = useState<string | null>(null);
   const id = useId();
   const check = checkImportedText(text);
+  const dirty = text.trim() !== '' || title.trim() !== '';
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange]);
 
   async function save() {
     if (check.problem) {
@@ -250,16 +262,73 @@ function ImportText({ repository, onCreated }: { repository: ReadingRepository; 
   );
 }
 
+type TextStatus = 'not_started' | 'in_progress' | 'finished';
+
+function statusOf(record: ReadingTextRecord): TextStatus {
+  if (record.progress.completedAt) return 'finished';
+  return record.progress.furthestParagraph > 0 ? 'in_progress' : 'not_started';
+}
+
+function percentRead(record: ReadingTextRecord): number {
+  return record.progress.completedAt ? 100 : Math.round(((record.progress.furthestParagraph + 1) / record.paragraphs.length) * 100);
+}
+
+/** "New text": generate one for your level or paste your own, in the shared creation panel. */
+function NewTextPanel({ open, repository, canGenerate, onClose, onCreated }: { open: boolean; repository: ReadingRepository; canGenerate: boolean; onClose: () => void; onCreated: (record: ReadingTextRecord) => void }) {
+  const [mode, setMode] = useState<'generate' | 'import'>(canGenerate ? 'generate' : 'import');
+  const [generateDirty, setGenerateDirty] = useState(false);
+  const [importDirty, setImportDirty] = useState(false);
+  const onGenerateDirty = useCallback((dirty: boolean) => setGenerateDirty(dirty), []);
+  const onImportDirty = useCallback((dirty: boolean) => setImportDirty(dirty), []);
+  const idBase = useId();
+  return (
+    <SidePanel open={open} onClose={onClose} dirty={generateDirty || importDirty} busy={generateDirty} title="New text" description="Generate a text for your level, or paste one of your own. No web pages are downloaded.">
+      {open ? (
+        <div className="flex flex-col gap-5">
+          <TabList
+            label="Where the text comes from"
+            idBase={idBase}
+            value={mode}
+            onChange={setMode}
+            items={[
+              { value: 'generate', label: 'Generate', icon: Sparkles },
+              { value: 'import', label: 'Paste your own', icon: ClipboardPaste },
+            ]}
+          />
+          <div {...tabPanelProps(idBase, 'generate')} hidden={mode !== 'generate'} className="outline-none">
+            {canGenerate ? (
+              <GenerateText repository={repository} onCreated={onCreated} onDirtyChange={onGenerateDirty} />
+            ) : (
+              <Notice>
+                Generating texts needs a Groq API key in <code className="font-mono text-xs">apps/server/.env</code>. You can still paste your own.
+              </Notice>
+            )}
+          </div>
+          <div {...tabPanelProps(idBase, 'import')} hidden={mode !== 'import'} className="outline-none">
+            <ImportText repository={repository} onCreated={onCreated} onDirtyChange={onImportDirty} />
+          </div>
+        </div>
+      ) : null}
+    </SidePanel>
+  );
+}
+
+/**
+ * The Reading hub: one "New text" action (generate or paste, in a side panel),
+ * the text you were reading, and the library with search and status filters.
+ */
 export function ReadingLabPage() {
   const storage = readingStorage.use();
   const capabilities = useCapabilities();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<'generate' | 'import'>('generate');
   const [texts, setTexts] = useState<ReadingTextRecord[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ReadingTextRecord | null>(null);
-  const ids = { add: useId(), library: useId() };
+  const [panel, setPanel] = useState({ open: false, key: 0 });
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState<TextStatus | 'all'>('all');
   const generationAvailable = capabilities.status === 'ready' && capabilities.data.exerciseGeneration.available;
+  const openPanel = () => setPanel((current) => ({ open: true, key: current.key + 1 }));
 
   const refresh = useCallback(async () => {
     if (!storage) return;
@@ -276,6 +345,12 @@ export function ReadingLabPage() {
   }, [refresh]);
 
   const open = (record: ReadingTextRecord) => navigate(`/reading/texts/${record.id}`);
+  const resume = useMemo(() => (texts ?? []).find((record) => statusOf(record) === 'in_progress') ?? null, [texts]);
+  const visible = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    return (texts ?? []).filter((record) => (status === 'all' || statusOf(record) === status) && (!needle || record.title.toLowerCase().includes(needle)));
+  }, [texts, query, status]);
+  const filtered = query.trim() !== '' || status !== 'all';
 
   return (
     <>
@@ -283,6 +358,14 @@ export function ReadingLabPage() {
         eyebrow="Reading"
         title="Read closely, keep what matters."
         description="Read texts written for your level or your own articles, look up expressions in context, save them to your vocabulary, and check your understanding against the text."
+        actions={
+          storage ? (
+            <Button onClick={openPanel}>
+              <Plus aria-hidden="true" />
+              New text
+            </Button>
+          ) : null
+        }
       />
       {storage?.fallbackReason ? <Notice className="mb-6">{storage.fallbackReason.message} Your texts will last until you close this tab.</Notice> : null}
       {error ? (
@@ -291,93 +374,116 @@ export function ReadingLabPage() {
         </Notice>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <Card aria-labelledby={ids.add} className="min-w-0">
-          <CardHeader>
-            <CardTitle id={ids.add}>New text</CardTitle>
-            <CardDescription>Generate a text for your level, or paste one of your own. No web pages are downloaded.</CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-5 pt-1">
-            <div role="group" aria-label="Source" className="inline-flex self-start rounded-lg border bg-card p-1">
-              {(
-                [
-                  ['generate', 'Generate', Sparkles],
-                  ['import', 'Paste your own', ClipboardPaste],
-                ] as const
-              ).map(([value, label, Icon]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={mode === value}
-                  onClick={() => setMode(value)}
-                  className={cn('inline-flex h-9 items-center gap-2 rounded-md px-3 text-sm transition-colors duration-150', mode === value ? 'bg-primary font-medium text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
-                >
-                  <Icon aria-hidden="true" className="size-4" />
-                  {label}
-                </button>
-              ))}
-            </div>
-            {!storage ? null : mode === 'import' ? (
-              <ImportText repository={storage.repository} onCreated={open} />
-            ) : capabilities.status === 'ready' && !generationAvailable ? (
-              <Notice>
-                Generating texts needs a Groq API key in <code className="font-mono text-xs">apps/server/.env</code>. You can still paste your own.
-              </Notice>
-            ) : (
-              <GenerateText repository={storage.repository} onCreated={open} />
-            )}
-          </CardContent>
-        </Card>
+      {resume ? <ContinueCard title={resume.title} detail={`${percentRead(resume)}% read · ${resume.estimatedMinutes} min`} to={`/reading/texts/${resume.id}`} action="Continue reading" /> : null}
 
-        <Card aria-labelledby={ids.library} className="min-w-0">
-          <CardHeader>
-            <CardTitle id={ids.library}>Your library</CardTitle>
-            <CardDescription>{storage?.persistent === false ? 'Kept until you close this tab.' : 'Saved in this browser.'}</CardDescription>
-          </CardHeader>
-          <CardContent className="pt-1">
-            {texts === null ? null : texts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Texts you generate or paste appear here.</p>
-            ) : (
-              <ul className="flex flex-col divide-y rounded-lg border" aria-label="Saved texts">
-                {texts.map((record) => {
-                  const progress = record.progress.completedAt ? 100 : Math.round(((record.progress.furthestParagraph + 1) / record.paragraphs.length) * 100);
-                  return (
-                    <li key={record.id} className="flex items-center gap-2 px-3 py-2">
-                      <Link to={`/reading/texts/${record.id}`} className="min-w-0 flex-1 rounded-md px-1 py-1 hover:bg-accent/40">
-                        <span className="block truncate font-serif text-[1.0625rem]">{record.title}</span>
-                        <span className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                          {record.level ? (
-                            <Badge variant="outline" className="px-2 py-0">
-                              {record.level}
-                            </Badge>
-                          ) : null}
-                          {record.source === 'imported' ? 'Your text' : record.textType ? TEXT_TYPE_LABELS[record.textType] : 'Text'} · {record.estimatedMinutes} min ·{' '}
-                          {record.progress.completedAt ? (
-                            <span className="inline-flex items-center gap-1 text-success">
-                              <CircleCheck aria-hidden="true" className="size-3" />
-                              Finished
-                            </span>
-                          ) : (
-                            `${progress}% read`
-                          )}{' '}
-                          · {dateFormatter.format(record.createdAt)}
-                        </span>
-                      </Link>
-                      <Button variant="ghost" size="icon-sm" aria-label={`Delete ${record.title}`} onClick={() => setPendingDelete(record)}>
-                        <Trash aria-hidden="true" />
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <p className="mt-4 flex gap-2 text-xs text-muted-foreground">
-              <BookOpenText aria-hidden="true" className="mt-0.5 size-3.5 shrink-0" />
-              Select any word or phrase while reading to look it up in context.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {texts === null ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Reading your library…
+        </p>
+      ) : texts.length === 0 ? (
+        <EmptyState
+          title="Your library is empty."
+          action={
+            <Button size="sm" onClick={openPanel}>
+              <Plus aria-hidden="true" />
+              New text
+            </Button>
+          }
+        >
+          Generate a text for your level or paste one of your own. While reading, select any word or phrase to look it up in context.
+        </EmptyState>
+      ) : (
+        <section aria-labelledby="reading-library" className="flex flex-col gap-4">
+          <h2 id="reading-library" className="sr-only">
+            Your library
+          </h2>
+          {texts.length >= SEARCH_THRESHOLD ? (
+            <div className="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
+              <SearchField label="Search your library" value={query} onChange={setQuery} className="sm:flex-[1_1_16rem]" />
+              <select aria-label="Status" value={status} onChange={(event) => setStatus(event.target.value as TextStatus | 'all')} className={cn(FILTER_CONTROL, 'min-w-0 sm:flex-[0_1_11rem]')}>
+                <option value="all">All texts</option>
+                <option value="in_progress">In progress</option>
+                <option value="not_started">Not started</option>
+                <option value="finished">Finished</option>
+              </select>
+            </div>
+          ) : null}
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {resultCount(visible.length, texts.length, 'text')} · {storage?.persistent === false ? 'kept until you close this tab' : 'saved in this browser'}
+            {filtered ? (
+              <button
+                type="button"
+                className="ml-2 underline-offset-2 hover:text-foreground hover:underline"
+                onClick={() => {
+                  setQuery('');
+                  setStatus('all');
+                }}
+              >
+                Clear filters
+              </button>
+            ) : null}
+          </p>
+          {visible.length === 0 ? (
+            <p className="rounded-lg border border-dashed px-4 py-5 text-sm text-muted-foreground">No texts match.</p>
+          ) : (
+            <ul className="divide-y rounded-lg border bg-card" aria-label="Saved texts">
+              {visible.map((record) => (
+                <li key={record.id} className="flex items-center gap-2 px-3 py-2 sm:px-4">
+                  <Link to={`/reading/texts/${record.id}`} className="group min-w-0 flex-1 rounded-md py-1.5">
+                    <span className="flex items-center gap-2">
+                      <span className="font-serif text-[1.0625rem] group-hover:underline">{record.title}</span>
+                      <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+                      {record.level ? (
+                        <Badge variant="outline" className="px-2 py-0">
+                          {record.level}
+                        </Badge>
+                      ) : null}
+                      <span>{record.source === 'imported' ? 'Your text' : record.textType ? TEXT_TYPE_LABELS[record.textType] : 'Text'}</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{record.estimatedMinutes} min</span>
+                      <span aria-hidden="true">·</span>
+                      <span>{dateFormatter.format(record.createdAt)}</span>
+                      {record.progress.completedAt ? (
+                        <Badge variant="success" className="px-2 py-0">
+                          <CircleCheck aria-hidden="true" />
+                          Finished
+                        </Badge>
+                      ) : statusOf(record) === 'in_progress' ? (
+                        <Badge variant="outline" className="px-2 py-0">
+                          {percentRead(record)}% read
+                        </Badge>
+                      ) : (
+                        <Badge variant="neutral" className="px-2 py-0">
+                          Not started
+                        </Badge>
+                      )}
+                    </span>
+                  </Link>
+                  <Button variant="ghost" size="icon-sm" aria-label={`Delete ${record.title}`} onClick={() => setPendingDelete(record)}>
+                    <Trash aria-hidden="true" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      <HelpDisclosure id="reading" title="How reading practice works" className="mt-10">
+        <ul className="flex list-disc flex-col gap-2 pl-5 text-sm leading-relaxed text-muted-foreground">
+          <li>
+            <BookOpenText aria-hidden="true" className="mr-1 inline size-3.5" />
+            Select any word or phrase while reading to look it up in context, then save it to your vocabulary.
+          </li>
+          <li>Comprehension questions are generated from the text on request; answers are checked against evidence quoted from the passage.</li>
+          <li>Levels are practice targets, not an official CEFR assessment.</li>
+        </ul>
+        <PrivacyNote className="mt-3">Your texts stay in this browser. A text is sent to Groq only when you ask for questions or look up a word (the sentence and its paragraph).</PrivacyNote>
+      </HelpDisclosure>
+
+      {storage ? <NewTextPanel key={panel.key} open={panel.open} repository={storage.repository} canGenerate={!(capabilities.status === 'ready' && !generationAvailable)} onClose={() => setPanel((current) => ({ ...current, open: false }))} onCreated={open} /> : null}
 
       <ConfirmDialog
         open={pendingDelete !== null}

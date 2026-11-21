@@ -1,13 +1,14 @@
 import { computeMetrics, dueEntries, rangeFor, todayWork, type LearningModule as ModuleId, type Recommendation, type WorkItem, type WorkStatus } from '@ldg/shared';
 import { ArrowRight, CircleCheck, RotateCcw } from 'lucide-react';
-import { useMemo } from 'react';
+import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { MODULES } from '@/app/modules';
 import { PageHeader, SectionHeading } from '@/components/layout/page-header';
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Notice } from '@/components/ui/notice';
+import { practisePath } from '@/features/personalized-training/targeted-practice';
 import { useLearningEngine } from '@/features/progress/use-learning-engine';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { cn } from '@/lib/utils';
@@ -146,7 +147,7 @@ function RecommendedSection({ recommendations }: { recommendations: readonly Rec
         <ul className="flex flex-col gap-3">
           {recommendations.map((recommendation) => {
             const action = recommendation.action;
-            const to = action.type === 'train' ? `/progress/training?category=${action.category}` : action.path;
+            const to = action.type === 'train' ? (practisePath(action.category) ?? `/progress/training?category=${action.category}`) : action.path;
             const label = action.type === 'train' ? 'Practise this' : action.label;
             return (
               <li key={recommendation.id} className="flex flex-col gap-3 rounded-lg border bg-card px-4 py-3.5 sm:flex-row sm:items-center">
@@ -217,9 +218,15 @@ function ReviewsSection({ due, nextDueAt, total, now }: { due: ReadonlyArray<{ i
   );
 }
 
+/** Recent activity starts short; the rest is one click away rather than a long scroll on a phone. */
+const RECENT_PREVIEW = 4;
+
 function RecentSection({ items, now, week }: { items: readonly WorkItem[]; now: number; week: { activeDays: number; completedExercises: number } }) {
+  const [showAll, setShowAll] = useState(false);
+  const listId = useId();
+  const shown = showAll ? items : items.slice(0, RECENT_PREVIEW);
   const groups: Array<{ heading: string; items: WorkItem[] }> = [];
-  for (const item of items) {
+  for (const item of shown) {
     const heading = dayHeading(item.at, now);
     const group = groups.at(-1);
     if (group && group.heading === heading) group.items.push(item);
@@ -232,26 +239,34 @@ function RecentSection({ items, now, week }: { items: readonly WorkItem[]; now: 
           Recent activity
         </SectionHeading>
         <p className="text-sm text-muted-foreground">
-          Last 7 days: {plural(week.activeDays, 'active day')} · {plural(week.completedExercises, 'completed exercise')} ·{' '}
+          {/* Active days are already in the page description, so only the exercise count is repeated here. */}
+          Last 7 days: {plural(week.completedExercises, 'completed exercise')} ·{' '}
           <Link to="/progress" className="underline-offset-4 hover:text-foreground hover:underline">
             Progress
           </Link>
         </p>
       </div>
       {groups.length > 0 ? (
-        <div className="flex flex-col gap-5">
-          {groups.map((group) => (
-            <div key={group.heading}>
-              <h3 className="mb-2 text-sm font-medium text-muted-foreground">{group.heading}</h3>
-              <ul className="divide-y rounded-lg border bg-card">
-                {group.items.map((item) => (
-                  <li key={item.id}>
-                    <WorkRow item={item} now={now} />
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+        <div className="flex flex-col gap-4">
+          <div id={listId} className="flex flex-col gap-4">
+            {groups.map((group) => (
+              <div key={group.heading}>
+                <h3 className="mb-2 text-sm font-medium text-muted-foreground">{group.heading}</h3>
+                <ul className="divide-y rounded-lg border bg-card">
+                  {group.items.map((item) => (
+                    <li key={item.id}>
+                      <WorkRow item={item} now={now} />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          {items.length > RECENT_PREVIEW ? (
+            <Button variant="ghost" size="sm" className="self-start" aria-expanded={showAll} aria-controls={listId} onClick={() => setShowAll((current) => !current)}>
+              {showAll ? 'Show less' : `Show all (${items.length})`}
+            </Button>
+          ) : null}
         </div>
       ) : (
         <EmptyState title="No other activity yet.">Completed recordings, essays, checked exercises, finished texts and reviews appear here with the time you did them.</EmptyState>
@@ -377,21 +392,27 @@ export function DashboardPage() {
       ) : today && today.empty ? (
         <FirstRun />
       ) : today ? (
-        // Phones read top to bottom: continue, reviews and shortcuts, then recommendations and activity.
+        // Phones read top to bottom: continue, reviews, recommendations, a short activity list, then shortcuts
+        // (the navigation drawer already lists every module, so they come last there).
         // On desktop the side column spans every row, so the main column's sections never wait for it.
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_19rem]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_19rem] lg:gap-10">
           <div className="lg:col-start-1 lg:row-start-1">
             <ContinueSection items={today.work.continueItems} now={today.now} />
           </div>
           <div className="flex flex-col gap-10 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-start">
             <ReviewsSection due={today.due} nextDueAt={today.nextDueAt} total={today.vocabularyTotal} now={today.now} />
-            <QuickStart />
+            <div className="hidden lg:block">
+              <QuickStart />
+            </div>
           </div>
           <div className="lg:col-start-1 lg:row-start-2">
             <RecommendedSection recommendations={today.recommendations} />
           </div>
           <div className="lg:col-start-1 lg:row-start-3">
             <RecentSection items={today.work.activity} now={today.now} week={today.week} />
+          </div>
+          <div className="lg:hidden">
+            <QuickStart />
           </div>
         </div>
       ) : null}

@@ -83,7 +83,7 @@ function actionFor(category: LearningCategory, observations: readonly LearningOb
     case 'vocabulary_retention':
       return dueCount > 0
         ? { action: { type: 'open', path: '/vocabulary/review', label: 'Review now' }, nextStep: `Review your ${dueCount} due expression${dueCount === 1 ? '' : 's'}, then practise the ones you forgot.` }
-        : { action: { type: 'open', path: '/vocabulary', label: 'Practise vocabulary' }, nextStep: 'Select the expressions you forget most and generate practice with them.' };
+        : { action: { type: 'open', path: '/vocabulary?practise=practice', label: 'Practise vocabulary' }, nextStep: 'Select the expressions you forget most and generate practice with them.' };
     default:
       return null;
   }

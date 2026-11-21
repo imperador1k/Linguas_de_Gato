@@ -1,6 +1,7 @@
 import { assessmentResponseSchema, type AssessmentRequest, type AssessmentResponse } from '@ldg/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError, apiPost } from '@/lib/api-client';
+import { useWorkInProgress } from '@/lib/work-in-progress';
 
 export type AssessmentJobState =
   | { readonly phase: 'idle' }
@@ -13,6 +14,7 @@ export type AssessmentJobState =
 export function useAssessmentJob() {
   const [state, setState] = useState<AssessmentJobState>({ phase: 'idle' });
   const controllerRef = useRef<AbortController | null>(null);
+  useWorkInProgress(state.phase === 'running');
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 

@@ -105,6 +105,12 @@ export async function buildApp(config: AppConfig, dependencies: AppDependencies 
       root: config.clientDistDir,
       wildcard: false,
       index: ['index.html'],
+      cacheControl: false,
+      // Hashed bundles never change, so they can be cached for good; index.html and version.json
+      // must be revalidated every time, or a running tab would never notice a new build.
+      setHeaders: (reply, filePath) => {
+        reply.header('cache-control', /[\\/]assets[\\/]/.test(filePath) ? 'public, max-age=31536000, immutable' : 'no-cache');
+      },
     });
   }
 

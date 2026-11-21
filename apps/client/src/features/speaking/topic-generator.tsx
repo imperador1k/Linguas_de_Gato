@@ -16,6 +16,7 @@ import {
   type SpeakingLevel,
   type SpeakingSkillFocus,
   type TargetDurationSeconds,
+  type TargetedPractice,
   type VocabularyItem,
 } from '@ldg/shared';
 import { LoaderCircle, RefreshCw, Sparkles, X } from 'lucide-react';
@@ -79,6 +80,10 @@ export interface TopicGeneratorProps {
   readonly embedded?: boolean;
   /** Reports unsaved work (a running generation or an unsaved preview) so the container can protect it. */
   readonly onDirtyChange?: (dirty: boolean) => void;
+  /** Pre-filled settings (personalized training). */
+  readonly initial?: Partial<Pick<Settings, 'format' | 'skillFocus' | 'level'>>;
+  /** Personalized training: the bounded profile from the learner's mistakes. */
+  readonly targetedPractice?: TargetedPractice | null;
 }
 
 /**
@@ -87,7 +92,7 @@ export interface TopicGeneratorProps {
  * it, and saves it as a personal topic. Nothing is sent until they press a
  * generate button, and nothing is saved until they press save.
  */
-export function TopicGenerator({ storage, onSaved, onClose, embedded = false, onDirtyChange }: TopicGeneratorProps) {
+export function TopicGenerator({ storage, onSaved, onClose, embedded = false, onDirtyChange, initial, targetedPractice = null }: TopicGeneratorProps) {
   const job = useGenerationJob();
   const [settings, setSettings] = useState<Settings>({
     level: 'C1',
@@ -96,6 +101,7 @@ export function TopicGenerator({ storage, onSaved, onClose, embedded = false, on
     targetDurationSeconds: 120,
     skillFocus: null,
     interest: '',
+    ...initial,
   });
   const [draft, setDraft] = useState<CustomTopicDraft | null>(null);
   const [edit, setEdit] = useState<Editable | null>(null);
@@ -132,6 +138,7 @@ export function TopicGenerator({ storage, onSaved, onClose, embedded = false, on
       targetDurationSeconds: settings.targetDurationSeconds,
       skillFocus: settings.skillFocus,
       avoidTitles: shownTitles.slice(-10),
+      ...(targetedPractice ? { targetedPractice } : {}),
     };
     const response = await job.start(request);
     if (!response || response.result.kind !== 'speaking') return;
@@ -283,7 +290,7 @@ export function TopicGenerator({ storage, onSaved, onClose, embedded = false, on
           ) : (
             <Button onClick={() => void generate()} disabled={saving}>
               {draft ? <RefreshCw aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
-              {draft ? 'Regenerate' : 'Generate with AI'}
+              {draft ? 'Regenerate' : 'Generate'}
             </Button>
           )}
         </div>

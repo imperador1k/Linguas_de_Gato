@@ -161,6 +161,74 @@ export function WritingAttemptPage() {
     document.getElementById(`correction-${id}`)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
   }
 
+  const textCard = (
+        <Card>
+          <CardContent className="pt-4">
+            <TextTabs view={view} onChange={setView} improvedAvailable={attempt.improvement !== null}>
+              {view === 'annotated' ? (
+                assessment ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs text-muted-foreground">
+                      <span className="underline decoration-destructive decoration-2 underline-offset-4">Solid</span> = error ·{' '}
+                      <span className="underline decoration-muted-foreground decoration-dotted decoration-2 underline-offset-4">dotted</span> = suggestion. Select a passage to see its explanation.
+                    </p>
+                    <AnnotatedText text={attempt.text} corrections={corrections} activeId={activeId} onSelect={select} />
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Corrections appear here after feedback.</p>
+                )
+              ) : view === 'original' ? (
+                <div className="font-serif text-[1.0625rem] leading-[1.85] whitespace-pre-wrap">{attempt.text}</div>
+              ) : view === 'fixed' ? (
+                assessment ? (
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs text-muted-foreground">Your text with only the errors corrected. Suggestions are left out, so the text stays yours.</p>
+                    <div className="font-serif text-[1.0625rem] leading-[1.85] whitespace-pre-wrap">{textWithFixes(attempt.text, corrections)}</div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Available after feedback.</p>
+                )
+              ) : attempt.improvement ? (
+                <div className="flex flex-col gap-4">
+                  <div className="font-serif text-[1.0625rem] leading-[1.85] whitespace-pre-wrap">{attempt.improvement.improvedText}</div>
+                  <div className="rounded-md bg-muted/50 px-4 py-3">
+                    <h3 className="mb-1.5 text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">What changed</h3>
+                    <ul className="flex list-disc flex-col gap-1 pl-5 text-sm leading-relaxed">
+                      {attempt.improvement.notes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    A complete revision of your text that keeps your ideas and structure. Study the corrections first: comparing your own fixes with this version is where
+                    most of the learning happens.
+                  </p>
+                  {improveJob.state.phase === 'running' ? (
+                    <RunningState startedAt={improveJob.state.startedAt} label="Writing an improved version" onCancel={improveJob.cancel} />
+                  ) : (
+                    <>
+                      {improveJob.state.phase === 'failed' ? (
+                        <Notice tone="error" role="alert">
+                          {improveJob.state.message}
+                        </Notice>
+                      ) : null}
+                      <Button variant="secondary" className="self-start" disabled={!assessment} onClick={() => void improve(attempt)}>
+                        <Sparkles aria-hidden="true" />
+                        Write an improved version
+                      </Button>
+                      {!assessment ? <p className="text-xs text-muted-foreground">Available after feedback.</p> : null}
+                    </>
+                  )}
+                </div>
+              )}
+            </TextTabs>
+          </CardContent>
+        </Card>
+  );
+
   return (
     <>
       <PageHeader back={BACK}
@@ -182,8 +250,24 @@ export function WritingAttemptPage() {
         </Notice>
       ) : null}
 
+      {/* Your text first, then the assessment of it. */}
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="flex min-w-0 flex-col gap-6">
+          {textCard}
+
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setConfirm('revise')}>
+              <PenLine aria-hidden="true" />
+              Revise this text
+            </Button>
+            {assessment ? (
+              <Button variant="ghost" onClick={() => void assess(attempt)} disabled={assessJob.state.phase === 'running'}>
+                <RotateCcw aria-hidden="true" />
+                Assess again
+              </Button>
+            ) : null}
+          </div>
+
           {!assessment ? (
             <Card>
               <CardHeader>
@@ -213,85 +297,6 @@ export function WritingAttemptPage() {
           ) : (
             <AssessmentSummary assessment={assessment} />
           )}
-
-          <Card>
-            <CardContent className="pt-4">
-              <TextTabs view={view} onChange={setView} improvedAvailable={attempt.improvement !== null}>
-                {view === 'annotated' ? (
-                  assessment ? (
-                    <div className="flex flex-col gap-3">
-                      <p className="text-xs text-muted-foreground">
-                        <span className="underline decoration-destructive decoration-2 underline-offset-4">Solid</span> = error ·{' '}
-                        <span className="underline decoration-muted-foreground decoration-dotted decoration-2 underline-offset-4">dotted</span> = suggestion. Select a passage to see its explanation.
-                      </p>
-                      <AnnotatedText text={attempt.text} corrections={corrections} activeId={activeId} onSelect={select} />
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Corrections appear here after feedback.</p>
-                  )
-                ) : view === 'original' ? (
-                  <div className="font-serif text-[1.0625rem] leading-[1.85] whitespace-pre-wrap">{attempt.text}</div>
-                ) : view === 'fixed' ? (
-                  assessment ? (
-                    <div className="flex flex-col gap-3">
-                      <p className="text-xs text-muted-foreground">Your text with only the errors corrected. Suggestions are left out, so the text stays yours.</p>
-                      <div className="font-serif text-[1.0625rem] leading-[1.85] whitespace-pre-wrap">{textWithFixes(attempt.text, corrections)}</div>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Available after feedback.</p>
-                  )
-                ) : attempt.improvement ? (
-                  <div className="flex flex-col gap-4">
-                    <div className="font-serif text-[1.0625rem] leading-[1.85] whitespace-pre-wrap">{attempt.improvement.improvedText}</div>
-                    <div className="rounded-md bg-muted/50 px-4 py-3">
-                      <h3 className="mb-1.5 text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">What changed</h3>
-                      <ul className="flex list-disc flex-col gap-1 pl-5 text-sm leading-relaxed">
-                        {attempt.improvement.notes.map((note) => (
-                          <li key={note}>{note}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                      A complete revision of your text that keeps your ideas and structure. Study the corrections first: comparing your own fixes with this version is where
-                      most of the learning happens.
-                    </p>
-                    {improveJob.state.phase === 'running' ? (
-                      <RunningState startedAt={improveJob.state.startedAt} label="Writing an improved version" onCancel={improveJob.cancel} />
-                    ) : (
-                      <>
-                        {improveJob.state.phase === 'failed' ? (
-                          <Notice tone="error" role="alert">
-                            {improveJob.state.message}
-                          </Notice>
-                        ) : null}
-                        <Button variant="secondary" className="self-start" disabled={!assessment} onClick={() => void improve(attempt)}>
-                          <Sparkles aria-hidden="true" />
-                          Write an improved version
-                        </Button>
-                        {!assessment ? <p className="text-xs text-muted-foreground">Available after feedback.</p> : null}
-                      </>
-                    )}
-                  </div>
-                )}
-              </TextTabs>
-            </CardContent>
-          </Card>
-
-          <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setConfirm('revise')}>
-              <PenLine aria-hidden="true" />
-              Revise this text
-            </Button>
-            {assessment ? (
-              <Button variant="ghost" onClick={() => void assess(attempt)} disabled={assessJob.state.phase === 'running'}>
-                <RotateCcw aria-hidden="true" />
-                Assess again
-              </Button>
-            ) : null}
-          </div>
         </div>
 
         <aside className="flex min-w-0 flex-col gap-6">
@@ -299,7 +304,7 @@ export function WritingAttemptPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Corrections</CardTitle>
-                <CardDescription>Most important first.</CardDescription>
+                <CardDescription>Most important first. Select one to find it in your text.</CardDescription>
               </CardHeader>
               <CardContent className="pt-1">
                 {corrections.length === 0 ? <p className="text-sm text-muted-foreground">No corrections were needed.</p> : <CorrectionList corrections={corrections} activeId={activeId} onSelect={setActiveId} />}

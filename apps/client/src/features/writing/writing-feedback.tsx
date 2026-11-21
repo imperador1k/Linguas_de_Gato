@@ -149,7 +149,15 @@ export function AssessmentSummary({ assessment }: { assessment: WritingAssessmen
             ))}
           </ol>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <details className="group rounded-lg border">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+            <span>By dimension</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              <span className="group-open:hidden">Show</span>
+              <span className="hidden group-open:inline">Hide</span>
+            </span>
+          </summary>
+        <div className="grid gap-3 border-t p-3 md:grid-cols-2">
           {WRITING_DIMENSIONS.map((key) => {
             const dimension = assessment[key];
             return (
@@ -173,6 +181,7 @@ export function AssessmentSummary({ assessment }: { assessment: WritingAssessmen
             );
           })}
         </div>
+        </details>
         {assessment.requiredElements.length > 0 ? (
           <div>
             <h3 className="mb-2 text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">Required elements</h3>

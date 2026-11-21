@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ZodType } from 'zod';
 import { ApiError, apiPost } from '@/lib/api-client';
+import { useWorkInProgress } from '@/lib/work-in-progress';
 
 export type ApiJobState =
   | { readonly phase: 'idle' }
@@ -17,6 +18,7 @@ export type ApiJobState =
 export function useApiJob<Req, Res>(path: `/api/${string}`, schema: ZodType<Res>, fallbackMessage: string) {
   const [state, setState] = useState<ApiJobState>({ phase: 'idle' });
   const controllerRef = useRef<AbortController | null>(null);
+  useWorkInProgress(state.phase === 'running');
 
   useEffect(() => () => controllerRef.current?.abort(), []);
 

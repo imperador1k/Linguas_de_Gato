@@ -11,9 +11,10 @@ import {
   type WritingRegister,
   type WritingTask,
   type WritingTaskRecord,
+  type TargetedPractice,
 } from '@ldg/shared';
 import { LoaderCircle, RefreshCw, Sparkles, X } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { AutoGrowTextarea } from '@/components/ui/auto-grow-textarea';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -104,6 +105,14 @@ export interface WritingTaskGeneratorProps {
   readonly repository: WritingRepository;
   readonly onSaved: (record: WritingTaskRecord, write: boolean) => void;
   readonly onClose: () => void;
+  /** Inside the creation side panel: no own frame or close button. */
+  readonly embedded?: boolean;
+  /** Reports unsaved work (a running generation or an unsaved preview). */
+  readonly onDirtyChange?: (dirty: boolean) => void;
+  /** Pre-filled settings (personalized training). */
+  readonly initial?: Partial<Pick<Settings, 'format' | 'register' | 'objective' | 'level'>>;
+  /** Personalized training: the bounded profile from the learner's mistakes. */
+  readonly targetedPractice?: TargetedPractice | null;
 }
 
 /**
@@ -111,9 +120,9 @@ export interface WritingTaskGeneratorProps {
  * it, and save it. Nothing is sent until "Generate" is pressed, and the task
  * never includes a model answer.
  */
-export function WritingTaskGenerator({ repository, onSaved, onClose }: WritingTaskGeneratorProps) {
+export function WritingTaskGenerator({ repository, onSaved, onClose, embedded = false, onDirtyChange, initial, targetedPractice = null }: WritingTaskGeneratorProps) {
   const job = useGenerationJob();
-  const [settings, setSettings] = useState<Settings>({ level: 'C1', format: 'opinion_essay', category: 'society', register: 'neutral', targetWords: 250, interest: '', objective: '' });
+  const [settings, setSettings] = useState<Settings>({ level: 'C1', format: 'opinion_essay', category: 'society', register: 'neutral', targetWords: 250, interest: '', objective: '', ...initial });
   const [task, setTask] = useState<{ task: WritingTask; model: string; category: WritingCategory } | null>(null);
   const [edit, setEdit] = useState<Editable | null>(null);
   const [shownTitles, setShownTitles] = useState<string[]>([]);
@@ -125,6 +134,8 @@ export function WritingTaskGenerator({ repository, onSaved, onClose }: WritingTa
   const field = (name: string) => `${id}-${name}`;
   const update = <K extends keyof Settings>(key: K, value: Settings[K]) => setSettings((current) => ({ ...current, [key]: value }));
   const set = (key: keyof Editable) => (value: string) => setEdit((current) => (current ? { ...current, [key]: value } : current));
+  const dirty = running || task !== null;
+  useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
 
   async function generate() {
     setSaveError(null);
@@ -138,6 +149,7 @@ export function WritingTaskGenerator({ repository, onSaved, onClose }: WritingTa
       interest: settings.interest.trim() || null,
       objective: settings.objective.trim() || null,
       avoidTitles: shownTitles.slice(-10),
+      ...(targetedPractice ? { targetedPractice } : {}),
     };
     const response = await job.start(request);
     if (!response || response.result.kind !== 'writing') return;
@@ -167,19 +179,23 @@ export function WritingTaskGenerator({ repository, onSaved, onClose }: WritingTa
   }
 
   return (
-    <div className="flex flex-col gap-5 rounded-lg border px-4 py-4 sm:px-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="flex items-center gap-2 text-base font-medium">
-            <Sparkles aria-hidden="true" className="size-4 text-brand" />
-            Generate a writing task
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">Choose what to practise. Preview, regenerate and edit the task before saving it.</p>
+    <div className={cn('flex flex-col gap-5', !embedded && 'rounded-lg border px-4 py-4 sm:px-5')}>
+      {embedded ? (
+        <p className="text-sm text-muted-foreground">Choose what to practise. Preview, regenerate and edit the task before saving it.</p>
+      ) : (
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="flex items-center gap-2 text-base font-medium">
+              <Sparkles aria-hidden="true" className="size-4 text-brand" />
+              Generate a writing task
+            </h3>
+            <p className="mt-1 text-sm text-muted-foreground">Choose what to practise. Preview, regenerate and edit the task before saving it.</p>
+          </div>
+          <Button variant="ghost" size="icon-sm" aria-label="Close the generator" onClick={onClose} disabled={running || saving}>
+            <X aria-hidden="true" />
+          </Button>
         </div>
-        <Button variant="ghost" size="icon-sm" aria-label="Close the generator" onClick={onClose} disabled={running || saving}>
-          <X aria-hidden="true" />
-        </Button>
-      </div>
+      )}
 
       <div className="flex flex-col gap-5">
         <div className="grid gap-4 sm:grid-cols-2">
@@ -263,7 +279,7 @@ export function WritingTaskGenerator({ repository, onSaved, onClose }: WritingTa
           ) : (
             <Button onClick={() => void generate()} disabled={saving}>
               {task ? <RefreshCw aria-hidden="true" /> : <Sparkles aria-hidden="true" />}
-              {task ? 'Regenerate' : 'Generate with AI'}
+              {task ? 'Regenerate' : 'Generate'}
             </Button>
           )}
         </div>

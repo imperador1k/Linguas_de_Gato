@@ -9,6 +9,7 @@ import { HelpDisclosure } from '@/components/ui/help-disclosure';
 import { Notice } from '@/components/ui/notice';
 import { PrivacyNote } from '@/components/ui/privacy-note';
 import { TabList, tabPanelProps } from '@/components/ui/tabs';
+import { usePractiseParam } from '@/features/personalized-training/use-practise-param';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { cn } from '@/lib/utils';
 import { HistoryView } from './history-view';
@@ -32,6 +33,7 @@ export function SpeakingLabPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const view: View = params.get('view') === 'history' ? 'history' : 'topics';
+  const practise = usePractiseParam('speaking');
   const [topics, setTopics] = useState<CustomTopic[]>([]);
   const [attempts, setAttempts] = useState<SpeakingAttempt[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -63,12 +65,29 @@ export function SpeakingLabPage() {
 
   const catalogue = useMemo(() => buildCatalogue(PROMPT_LIBRARY, topics), [topics]);
 
-  const setView = (next: View) => setParams(next === 'history' ? { view: 'history' } : {}, { replace: true });
-  const openPanel = (editing: CustomTopic | null = null) => setPanel((current) => ({ open: true, key: current.key + 1, editing }));
-  const closePanel = () => setPanel((current) => ({ ...current, open: false }));
+  // "Practise this" from Progress or Today: open the panel in targeted mode.
+  useEffect(() => {
+    if (practise.category) setPanel((current) => (current.open ? current : { open: true, key: current.key + 1, editing: null }));
+  }, [practise.category]);
 
-  async function onSaved(topic: CustomTopic, practise: boolean) {
-    if (practise) {
+  const setView = (next: View) =>
+    setParams(
+      (current) => {
+        const result = new URLSearchParams(current);
+        if (next === 'history') result.set('view', 'history');
+        else result.delete('view');
+        return result;
+      },
+      { replace: true },
+    );
+  const openPanel = (editing: CustomTopic | null = null) => setPanel((current) => ({ open: true, key: current.key + 1, editing }));
+  const closePanel = () => {
+    setPanel((current) => ({ ...current, open: false }));
+    if (practise.category) practise.clear();
+  };
+
+  async function onSaved(topic: CustomTopic, practiseNow: boolean) {
+    if (practiseNow) {
       navigate(`/speaking/practice/custom/${topic.id}`);
       return;
     }
@@ -201,7 +220,18 @@ export function SpeakingLabPage() {
         </div>
       </HelpDisclosure>
 
-      {storage ? <TopicPanel key={panel.key} open={panel.open} storage={storage} canGenerate={canGenerate} editing={panel.editing} onClose={closePanel} onSaved={(topic, practise) => void onSaved(topic, practise)} /> : null}
+      {storage ? (
+        <TopicPanel
+          key={panel.key}
+          open={panel.open}
+          storage={storage}
+          canGenerate={canGenerate}
+          editing={panel.editing}
+          practise={panel.editing ? null : practise.category}
+          onClose={closePanel}
+          onSaved={(topic, practiseNow) => void onSaved(topic, practiseNow)}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={pendingTopic !== null}
