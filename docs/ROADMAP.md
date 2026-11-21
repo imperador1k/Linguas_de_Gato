@@ -119,6 +119,23 @@ Files above the upload limit are rejected with a clear message. Automatic splitt
 - Storage status (persisted or not, space used) in Settings & data.
 - Optional File System Access handles (Chromium) to reopen large files without copying them.
 
+## M9 — Vocabulary Trainer: foundation & local exercise engine ✅
+
+- A validated, versioned content contract for static vocabulary packs (`docs/VOCABULARY_PACKS.md`), loaded lazily as static files, never bundled or stored per learner.
+- Library view inside Vocabulary: language (English only), pack, CEFR (where known, or "not rated"), topic, part of speech and exercise filters; a 47-entry original demonstration pack.
+- Local Spelling, Context and Definition rounds: chosen size, progress, Enter to check, progressive hints (recorded), graded feedback (correct / almost / wrong form / incorrect), results, retry of the hard ones. No AI or `/api/` requests.
+- Language-aware answer matching; rounds stored as existing practice sets (`model: 'local'`); trained words join the existing collection and review ladder; learning-engine observations, metrics and Today updated without double counting. No database migration.
+- Hints taken before leaving a round are restored when it is resumed; checking a round writes the collection changes and the checked round in one transaction.
+- Scope: the trainer engine and a demonstration pack only. The production vocabulary catalogue and the data pipeline that will produce it are **not** part of M9 (see below).
+
+### Later: vocabulary
+
+- A reproducible vocabulary data pipeline (sources, licences, provenance, candidate generation), then a reviewed pilot, before any production import.
+- Import of the production library (15,000–20,000 entries) in several packs, with licences checked.
+- Audio mode with licensed recorded pronunciations.
+- More translation languages and target languages (a cross-cutting change: `LANGUAGE_CODES`, labels, normalisation rules).
+- Server-side or worker-based search if packs outgrow in-memory filtering.
+
 ## Later
 
 - Additional target languages (content packs keyed by `LanguageCode`).
