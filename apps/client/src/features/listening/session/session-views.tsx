@@ -6,7 +6,7 @@ import { SessionTranscriptionCard } from '../transcription/session-transcription
 import { useMediaPlayer } from '../use-media-player';
 import { useYouTubePlayer } from '../youtube/use-youtube-player';
 import { YouTubeSessionPlayer } from '../youtube/youtube-session-player';
-import { MediaCopyCard } from './media-copy-card';
+import { MediaCopyBar } from './media-copy-bar';
 import { MediaReconnect } from './media-reconnect';
 import { PracticeWorkspace } from './practice-workspace';
 import type { ListeningSessionApi, LoadedSession } from './use-listening-session';
@@ -48,31 +48,24 @@ export function LocalSessionView({
       playback={playback}
       restorePosition
       player={(loop) =>
-        objectUrl ? (
-          <MediaPlayer
-            src={objectUrl}
-            title={source.fileName}
-            meta={meta}
-            mediaRef={ref}
-            state={state}
-            controls={controls}
-            loop={loop}
-          />
+        objectUrl && data.media ? (
+          <div className="flex flex-col gap-3">
+            <MediaPlayer src={objectUrl} title={source.fileName} meta={meta} mediaRef={ref} state={state} controls={controls} loop={loop} />
+            {/* Next to the player, where the learner notices it, not at the bottom of the sidebar. */}
+            <MediaCopyBar
+              source={source}
+              media={data.media}
+              persistent={api.persistent}
+              issue={data.mediaIssue}
+              onKeep={() => api.setMediaCopy(true, data.media)}
+              onRemove={() => api.setMediaCopy(false, null)}
+            />
+          </div>
         ) : (
-          <MediaReconnect source={source} onAttach={api.attachMedia} />
+          <MediaReconnect source={source} persistent={api.persistent} issue={data.mediaIssue} onAttach={api.attachMedia} />
         )
       }
-      sidebar={(tools) => (
-        <>
-          <SessionTranscriptionCard source={source} media={data.media} tools={tools} />
-          <MediaCopyCard
-            source={source}
-            media={data.media}
-            persistent={api.persistent}
-            onChange={(enabled) => api.setMediaCopy(enabled, data.media)}
-          />
-        </>
-      )}
+      sidebar={(tools) => <SessionTranscriptionCard source={source} media={data.media} tools={tools} />}
     />
   );
 }

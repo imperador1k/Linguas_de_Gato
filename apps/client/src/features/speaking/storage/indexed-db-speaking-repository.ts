@@ -1,7 +1,14 @@
 import { customTopicSchema, speakingAttemptSchema, type CustomTopic, type SpeakingAttempt } from '@ldg/shared';
 import { STORES, openAppDatabase } from '@/lib/storage/app-database';
-import { parseStoredRecord, requestToPromise, runInTransaction, StorageError, transactionDone } from '@/lib/storage/indexed-db';
-import { sortNewestFirst, withRecordingStored, type SpeakingRepository } from './speaking-repository';
+import { parseStoredRecord, requestToPromise, runInTransaction, StorageError, toStorageError, transactionDone } from '@/lib/storage/indexed-db';
+import {
+  assertStorableRecording,
+  recordingRepair,
+  sortNewestFirst,
+  withRecordingStored,
+  type RecordingReconciliation,
+  type SpeakingRepository,
+} from './speaking-repository';
 
 interface RecordingRecord {
   readonly attemptId: string;
@@ -45,11 +52,41 @@ export class IndexedDbSpeakingRepository implements SpeakingRepository {
     return parseStoredRecord(speakingAttemptSchema, row, 'speaking attempt');
   }
 
-  async putAttempt(attempt: SpeakingAttempt): Promise<void> {
-    const row = speakingAttemptSchema.parse(attempt);
-    const transaction = this.transaction(STORES.speakingAttempts, 'readwrite');
-    transaction.objectStore(STORES.speakingAttempts).put(row);
+  async putAttempt(attempt: SpeakingAttempt, recording?: Blob): Promise<void> {
+    if (recording) assertStorableRecording(recording);
+    const row = speakingAttemptSchema.parse(recording ? withRecordingStored(attempt, true, attempt.updatedAt) : attempt);
+    const stores = recording ? [STORES.speakingAttempts, STORES.speakingRecordings] : STORES.speakingAttempts;
+    const transaction = this.transaction(stores, 'readwrite');
+    try {
+      transaction.objectStore(STORES.speakingAttempts).put(row);
+      // Same transaction: a recording that doesn't fit leaves no half-saved attempt behind.
+      if (recording) transaction.objectStore(STORES.speakingRecordings).put({ attemptId: attempt.id, blob: recording } satisfies RecordingRecord);
+    } catch (error) {
+      // A synchronous failure (e.g. a value that can't be cloned) would otherwise let the attempt commit alone.
+      transaction.abort();
+      throw toStorageError(error);
+    }
     await transactionDone(transaction);
+  }
+
+  async reconcileRecording(attemptId: string): Promise<RecordingReconciliation | null> {
+    const transaction = this.transaction([STORES.speakingAttempts, STORES.speakingRecordings], 'readwrite');
+    return runInTransaction(transaction, async () => {
+      const attempts = transaction.objectStore(STORES.speakingAttempts);
+      const current = parseStoredRecord(speakingAttemptSchema, await requestToPromise(attempts.get(attemptId)), 'speaking attempt');
+      if (!current) return null;
+      const present = (await requestToPromise(transaction.objectStore(STORES.speakingRecordings).count(attemptId))) > 0;
+      const repaired = recordingRepair(current, present);
+      if (!repaired) return { attempt: current, present, repaired };
+      const next = withRecordingStored(current, present, Date.now());
+      attempts.put(next);
+      return { attempt: next, present, repaired };
+    });
+  }
+
+  async listRecordingKeys(): Promise<string[]> {
+    const transaction = this.transaction(STORES.speakingRecordings, 'readonly');
+    return (await requestToPromise(transaction.objectStore(STORES.speakingRecordings).getAllKeys())).map(String);
   }
 
   async updateAttempt(id: string, update: (attempt: SpeakingAttempt) => SpeakingAttempt): Promise<SpeakingAttempt | null> {
@@ -80,6 +117,7 @@ export class IndexedDbSpeakingRepository implements SpeakingRepository {
   }
 
   saveRecording(attemptId: string, recording: Blob): Promise<SpeakingAttempt | null> {
+    assertStorableRecording(recording);
     return this.writeRecording(attemptId, (store) => store.put({ attemptId, blob: recording } satisfies RecordingRecord), true);
   }
 

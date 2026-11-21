@@ -35,6 +35,15 @@ describe('unfinished work', () => {
     expect(items.map((item) => item.at)).toEqual([...items.map((item) => item.at)].sort((a, b) => b - a));
   });
 
+  it('says whether a file session can play its audio, and says nothing for YouTube', () => {
+    const fileSource = { kind: 'file' as const, fileName: 'talk.mp3', fileSize: 1000, lastModified: 1, mimeType: 'audio/mpeg', formatExtension: 'mp3', mediaKind: 'audio' as const };
+    const records = [dictation('1', 'The weather is lovely today', [{ at: NOW - 3 * DAY, answer: 'The weather' }])];
+    const media = (session: typeof SESSION) => unfinishedWork(today({ listeningSessions: [session], dictation: records }), NOW).find((item) => item.id === 'listening:s1');
+    expect(media(SESSION)).not.toHaveProperty('media');
+    expect(media({ ...SESSION, source: { ...fileSource, mediaStored: true } })).toMatchObject({ media: 'audio-saved', sessionId: 's1' });
+    expect(media({ ...SESSION, source: { ...fileSource, mediaStored: false } })).toMatchObject({ media: 'needs-file', sessionId: 's1' });
+  });
+
   it('flags work whose feedback is missing, and never invents unfinished work', () => {
     const noFeedback = { ...speakingAttempt('sp-x', NOW - DAY, []), assessment: null };
     const items = unfinishedWork(today({ speakingAttempts: [noFeedback, speakingAttempt('sp-done', NOW, [])] }), NOW);

@@ -1,12 +1,15 @@
-import type {
-  DictationRecord,
-  ListeningExerciseSet,
-  ListeningSession,
-  SubtitleCue,
-  TimedWord,
-  TranscriptRecord,
-  TranscriptSegment,
+import {
+  MAX_STORED_MEDIA_BYTES,
+  formatBytes,
+  type DictationRecord,
+  type ListeningExerciseSet,
+  type ListeningSession,
+  type SubtitleCue,
+  type TimedWord,
+  type TranscriptRecord,
+  type TranscriptSegment,
 } from '@ldg/shared';
+import { StorageError } from '@/lib/storage/indexed-db';
 
 /** What a transcript write carries: cues always; provider timing when the transcript was generated. */
 export interface TranscriptContent {
@@ -29,8 +32,13 @@ export interface ListeningRepository {
   /** All valid sessions, most recently opened first. Corrupt records are skipped. */
   listSessions(): Promise<ListeningSession[]>;
   getSession(id: string): Promise<ListeningSession | null>;
-  /** Creates a session, and its transcript in the same transaction when given. */
-  createSession(session: ListeningSession, transcript?: TranscriptContent): Promise<void>;
+  /**
+   * Creates a session, with its transcript and a copy of its media in the same
+   * transaction when given. With media, the stored session has
+   * `source.mediaStored: true`; if any part fails (a full disk, for one),
+   * nothing is written.
+   */
+  createSession(session: ListeningSession, transcript?: TranscriptContent, media?: Blob): Promise<void>;
   /**
    * Read-modify-write in one transaction, so concurrent updates (e.g. playback
    * position and a renamed title) never overwrite each other.
@@ -51,6 +59,14 @@ export interface ListeningRepository {
   /** Keeps a copy of the media file and marks the session accordingly. */
   saveMedia(sessionId: string, media: Blob): Promise<ListeningSession | null>;
   deleteMedia(sessionId: string): Promise<ListeningSession | null>;
+  /**
+   * Makes the session's `mediaStored` flag match what is really stored, in
+   * one transaction, without reading the media. Never deletes media.
+   * Resolves null if the session no longer exists.
+   */
+  reconcileMedia(sessionId: string): Promise<MediaReconciliation | null>;
+  /** Ids of the sessions that have a stored media copy. */
+  listMediaKeys(): Promise<string[]>;
 
   listDictation(sessionId: string): Promise<DictationRecord[]>;
   putDictation(record: DictationRecord): Promise<void>;
@@ -64,6 +80,20 @@ export interface ListeningRepository {
   getExerciseSet(id: string): Promise<ListeningExerciseSet | null>;
   putExerciseSet(set: ListeningExerciseSet): Promise<void>;
   deleteExerciseSet(id: string): Promise<void>;
+}
+
+export interface MediaReconciliation {
+  readonly session: ListeningSession;
+  /** Whether a media copy exists. */
+  readonly present: boolean;
+  /** What was corrected: a flag claiming a missing copy, or an unflagged copy. */
+  readonly repaired: 'flag-cleared' | 'flag-set' | null;
+}
+
+/** A copy larger than the policy allows is refused before anything is written. */
+export function assertStorableMedia(media: Blob): void {
+  if (media.size <= 0) throw new StorageError('unknown', 'The file is empty, so there is nothing to keep.');
+  if (media.size > MAX_STORED_MEDIA_BYTES) throw new StorageError('unknown', `Files over ${formatBytes(MAX_STORED_MEDIA_BYTES)} can't be kept in this browser.`);
 }
 
 export function sortSetsNewestFirst(sets: ListeningExerciseSet[]): ListeningExerciseSet[] {
@@ -86,4 +116,10 @@ export function sortByLastOpened(sessions: ListeningSession[]): ListeningSession
 export function withMediaStored(session: ListeningSession, mediaStored: boolean, now: number): ListeningSession {
   if (session.source.kind !== 'file') return session;
   return { ...session, source: { ...session.source, mediaStored }, updatedAt: now };
+}
+
+/** The flag correction `reconcileMedia` applies, given whether a copy exists. */
+export function mediaRepair(session: ListeningSession, present: boolean): MediaReconciliation['repaired'] {
+  if (session.source.kind !== 'file' || session.source.mediaStored === present) return null;
+  return present ? 'flag-set' : 'flag-cleared';
 }

@@ -7,7 +7,7 @@ import { Notice } from '@/components/ui/notice';
 import { useCapabilities } from '@/hooks/use-capabilities';
 import { MediaDropzone } from '../media-dropzone';
 import { describeStorageError, type ListeningStorage } from '../storage/listening-storage';
-import { rememberSessionMedia } from '../storage/session-media-cache';
+import { KeepMediaOption, useKeepChoice } from '@/components/ui/keep-media-option';
 import { NoSpeechError, createTranscribedSession } from './transcribed-session';
 import { TranscriptionOptionsFields, useTranscriptionPreferences } from './transcription-options';
 import { TranscriptionPrivacyNote, TranscriptionStatus } from './transcription-status';
@@ -58,6 +58,7 @@ export function TranscribeNewSession({ storage, onDirtyChange }: { storage: List
   const busy = isTranscriptionBusy(job.state);
   // A chosen file or a running upload is work the creation panel must not drop silently.
   useEffect(() => onDirtyChange?.(busy || selection !== null, busy), [busy, selection, onDirtyChange]);
+  const keepChoice = useKeepChoice(selection?.file.size ?? null, storage?.repository.persistent ?? true);
 
   if (capabilities.status === 'loading') {
     return (
@@ -94,8 +95,8 @@ export function TranscribeNewSession({ storage, onDirtyChange }: { storage: List
     const result = await job.start(selection.file, selection.file.name, options);
     if (!result) return;
     try {
-      const session = await createTranscribedSession(storage.repository, selection.file, selection.accepted, result);
-      rememberSessionMedia(session.id, selection.file);
+      // The session and transcript are saved even if the audio copy doesn't fit; the session page then says so.
+      const { session } = await createTranscribedSession(storage.repository, selection.file, selection.accepted, result, { keep: keepChoice.keep });
       navigate(`/listening/session/${session.id}?transcribed=1`);
     } catch (error) {
       job.fail(error instanceof NoSpeechError ? error.message : `The transcript couldn't be saved. ${describeStorageError(error)}`);
@@ -152,6 +153,8 @@ export function TranscribeNewSession({ storage, onDirtyChange }: { storage: List
       ) : null}
 
       <TranscriptionOptionsFields value={options} onChange={setOptions} disabled={busy} />
+
+      {keepChoice.plan ? <KeepMediaOption plan={keepChoice.plan} size={file.size} checked={keepChoice.keep} onChange={keepChoice.setKeep} disabled={busy} /> : null}
 
       <TranscriptionPrivacyNote />
 

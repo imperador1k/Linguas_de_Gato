@@ -62,7 +62,7 @@ export function upgradeAppDatabase(database: IDBDatabase, oldVersion: number): v
   }
   if (oldVersion < 2) {
     database.createObjectStore(STORES.speakingAttempts, { keyPath: 'id' });
-    // Opt-in recordings, kept apart so listing attempts never loads audio.
+    // Kept recordings, apart from attempts so listing attempts never loads audio.
     database.createObjectStore(STORES.speakingRecordings, { keyPath: 'attemptId' });
     database.createObjectStore(STORES.speakingTopics, { keyPath: 'id' });
   }

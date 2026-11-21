@@ -2,7 +2,16 @@ import type { DictationRecord, ListeningSession, SubtitleCue, TranscriptSummary 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ListeningRepository, TranscriptContent } from '../storage/listening-repository';
 import { describeStorageError, useListeningStorage, type ListeningStorage } from '../storage/listening-storage';
-import { forgetSessionMedia, recallSessionMedia, rememberSessionMedia } from '../storage/session-media-cache';
+import { fileLabel, keepSessionMedia } from '../storage/session-media';
+import {
+  forgetSessionMedia,
+  markSessionMediaSaved,
+  mediaIssueOf,
+  noteMediaIssue,
+  recallSessionMedia,
+  rememberSessionMedia,
+  type MediaIssue,
+} from '../storage/session-media-cache';
 
 export interface LoadedSession {
   readonly session: ListeningSession;
@@ -10,6 +19,8 @@ export interface LoadedSession {
   readonly dictation: readonly DictationRecord[];
   /** The playable media, when available (chosen this page lifetime or saved as a copy). */
   readonly media: Blob | null;
+  /** Why the media isn't saved when it should be (a full disk, a missing copy), for this page lifetime. */
+  readonly mediaIssue: MediaIssue | null;
 }
 
 export type SessionLoadState =
@@ -23,12 +34,28 @@ async function loadSession(repository: ListeningRepository, id: string): Promise
   if (!opened) return null;
   const [transcript, dictation] = await Promise.all([repository.getTranscript(id), repository.listDictation(id)]);
 
+  let session = opened;
   let media = recallSessionMedia(id);
-  if (!media && opened.source.kind === 'file' && opened.source.mediaStored) {
-    media = await repository.getMedia(id);
-    if (media) rememberSessionMedia(id, media);
+  let mediaIssue = mediaIssueOf(id);
+  if (session.source.kind === 'file') {
+    // Trust what is stored, not the flag: a copy that is gone must not be reported as saved.
+    const check = await repository.reconcileMedia(id);
+    if (check) {
+      session = check.session;
+      if (check.repaired === 'flag-cleared') {
+        mediaIssue = 'copy-missing';
+        noteMediaIssue(id, mediaIssue);
+      }
+      if (!media && check.present) media = await repository.getMedia(id);
+      if (media) rememberSessionMedia(id, media, { saved: check.present, label: fileLabel(session) });
+    }
   }
-  return { session: opened, cues: transcript?.cues ?? null, dictation, media };
+  return { session, cues: transcript?.cues ?? null, dictation, media, mediaIssue };
+}
+
+export interface MediaOutcome {
+  readonly ok: boolean;
+  readonly issue: MediaIssue | null;
 }
 
 /**
@@ -42,6 +69,8 @@ export function useListeningSession(id: string) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const storageRef = useRef<ListeningStorage | null>(null);
   storageRef.current = storage;
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   useEffect(() => {
     if (!storage) return;
@@ -103,24 +132,43 @@ export function useListeningSession(id: string) {
     [patch, run],
   );
 
-  const attachMedia = useCallback(
-    (media: Blob) => {
-      rememberSessionMedia(id, media);
-      patch((data) => ({ ...data, media }));
+  const sessionOf = useCallback(() => (stateRef.current.status === 'ready' ? stateRef.current.data.session : null), []);
+
+  /** Keeps a copy of media that is open now; reports what happened instead of throwing. */
+  const keepCopy = useCallback(
+    async (media: Blob): Promise<MediaOutcome> => {
+      const repository = storageRef.current?.repository;
+      const session = sessionOf();
+      if (!repository || !session) return { ok: false, issue: 'write-failed' };
+      const outcome = await keepSessionMedia(repository, session, media);
+      patch((data) => ({ ...data, session: outcome.session ?? data.session, mediaIssue: outcome.issue }));
+      return { ok: outcome.session !== null, issue: outcome.issue };
     },
-    [id, patch],
+    [patch, sessionOf],
+  );
+
+  /** A reconnected file: play it now and, when asked, keep a copy again. */
+  const attachMedia = useCallback(
+    async (media: Blob, keep: boolean): Promise<MediaOutcome> => {
+      const session = sessionOf();
+      rememberSessionMedia(id, media, { saved: false, label: session ? fileLabel(session) : 'Audio' });
+      patch((data) => ({ ...data, media, mediaIssue: null }));
+      noteMediaIssue(id, null);
+      return keep ? keepCopy(media) : { ok: true, issue: null };
+    },
+    [id, patch, keepCopy, sessionOf],
   );
 
   const setMediaCopy = useCallback(
-    async (enabled: boolean, media: Blob | null): Promise<boolean> => {
-      const updated = await run((repository) =>
-        enabled && media ? repository.saveMedia(id, media) : repository.deleteMedia(id),
-      );
-      if (!updated) return false;
-      patch((data) => ({ ...data, session: updated }));
-      return true;
+    async (enabled: boolean, media: Blob | null): Promise<MediaOutcome> => {
+      if (enabled) return media ? keepCopy(media) : { ok: false, issue: 'write-failed' };
+      const updated = await run((repository) => repository.deleteMedia(id));
+      if (!updated) return { ok: false, issue: 'write-failed' };
+      markSessionMediaSaved(id, { saved: false, label: fileLabel(updated) });
+      patch((data) => ({ ...data, session: updated, mediaIssue: null }));
+      return { ok: true, issue: null };
     },
-    [id, patch, run],
+    [id, patch, run, keepCopy],
   );
 
   const deleteSession = useCallback(async () => {
@@ -141,6 +189,7 @@ export function useListeningSession(id: string) {
     replaceTranscript,
     saveDictation,
     attachMedia,
+    keepCopy,
     setMediaCopy,
     deleteSession,
   };

@@ -20,14 +20,18 @@ import {
   requestToPromise,
   runInTransaction,
   StorageError,
+  toStorageError,
   transactionDone,
 } from '@/lib/storage/indexed-db';
 import {
+  assertStorableMedia,
+  mediaRepair,
   sortByLastOpened,
   sortSetsNewestFirst,
   toTranscriptRecord,
   withMediaStored,
   type ListeningRepository,
+  type MediaReconciliation,
   type TranscriptContent,
 } from './listening-repository';
 
@@ -39,7 +43,7 @@ export const LISTENING_DB_VERSION = APP_DB_VERSION;
  * Listening stores:
  * - sessions     keyPath id                    small metadata, listed often
  * - transcripts  keyPath sessionId             cues (+ provider segments/words since M2), loaded per session
- * - media        keyPath sessionId             optional opt-in copy of a local file
+ * - media        keyPath sessionId             kept copy of a local file (default for files ≤ 100 MB since M8)
  * - dictation    keyPath [sessionId, cueId]    attempts per transcript line
  * - listeningExercises keyPath id, index bySession   AI-generated question sets and answers (v3)
  *
@@ -101,13 +105,23 @@ export class IndexedDbListeningRepository implements ListeningRepository {
     return parseOrNull(listeningSessionSchema, row, 'session');
   }
 
-  async createSession(session: ListeningSession, transcript?: TranscriptContent): Promise<void> {
+  async createSession(session: ListeningSession, transcript?: TranscriptContent, media?: Blob): Promise<void> {
     // Validate everything before opening the transaction, so a bad value never half-writes.
-    const sessionRow = listeningSessionSchema.parse(session);
+    if (media) assertStorableMedia(media);
+    const sessionRow = listeningSessionSchema.parse(media ? withMediaStored(session, true, session.updatedAt) : session);
     const transcriptRow = transcript ? transcriptRecordSchema.parse(toTranscriptRecord(session.id, transcript)) : null;
-    const transaction = this.transaction([STORES.sessions, STORES.transcripts], 'readwrite');
-    transaction.objectStore(STORES.sessions).add(sessionRow);
-    if (transcriptRow) transaction.objectStore(STORES.transcripts).put(transcriptRow);
+    const stores = media ? [STORES.sessions, STORES.transcripts, STORES.media] : [STORES.sessions, STORES.transcripts];
+    const transaction = this.transaction(stores, 'readwrite');
+    try {
+      transaction.objectStore(STORES.sessions).add(sessionRow);
+      if (transcriptRow) transaction.objectStore(STORES.transcripts).put(transcriptRow);
+      // One transaction: if the copy doesn't fit, the session and transcript are not written either.
+      if (media) transaction.objectStore(STORES.media).put({ sessionId: session.id, blob: media } satisfies MediaRecord);
+    } catch (error) {
+      // A synchronous failure (e.g. a value that can't be cloned) would otherwise let the earlier requests commit.
+      transaction.abort();
+      throw toStorageError(error);
+    }
     await transactionDone(transaction);
   }
 
@@ -169,7 +183,30 @@ export class IndexedDbListeningRepository implements ListeningRepository {
   }
 
   async saveMedia(sessionId: string, media: Blob): Promise<ListeningSession | null> {
+    assertStorableMedia(media);
     return this.writeMediaFlag(sessionId, (store) => store.put({ sessionId, blob: media } satisfies MediaRecord), true);
+  }
+
+  async reconcileMedia(sessionId: string): Promise<MediaReconciliation | null> {
+    const transaction = this.transaction([STORES.sessions, STORES.media], 'readwrite');
+    return runInTransaction(transaction, async () => {
+      const sessions = transaction.objectStore(STORES.sessions);
+      const current = parseOrNull(listeningSessionSchema, await requestToPromise(sessions.get(sessionId)), 'session');
+      if (!current) return null;
+      // `count` checks presence without loading a possibly large Blob.
+      const present = (await requestToPromise(transaction.objectStore(STORES.media).count(sessionId))) > 0;
+      const repaired = mediaRepair(current, present);
+      if (!repaired) return { session: current, present, repaired };
+      const next = withMediaStored(current, present, Date.now());
+      sessions.put(next);
+      return { session: next, present, repaired };
+    });
+  }
+
+  async listMediaKeys(): Promise<string[]> {
+    const transaction = this.transaction(STORES.media, 'readonly');
+    const keys = await requestToPromise(transaction.objectStore(STORES.media).getAllKeys());
+    return keys.map(String);
   }
 
   async deleteMedia(sessionId: string): Promise<ListeningSession | null> {

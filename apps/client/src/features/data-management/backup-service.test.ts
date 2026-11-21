@@ -8,6 +8,9 @@ import { openDatabase } from '@/lib/storage/indexed-db';
 // Schema-valid records shared with the engine's own tests.
 import { NOW, SESSION, dictation, grammarSet, speakingAttempt, vocabularyEntry, writingAttempt } from '../../../../../packages/shared/src/learning/fixtures.test-helpers';
 import { MediaTooLargeError, applyImport, createBackup, previewImport, readBackupFile, readEverything } from './backup-service';
+import { IndexedDbListeningRepository } from '@/features/listening/storage/indexed-db-listening-repository';
+import { newFileSession } from '@/features/listening/storage/listening-storage';
+import { IndexedDbSpeakingRepository } from '@/features/speaking/storage/indexed-db-speaking-repository';
 
 const memoryStorage = () => {
   const values = new Map<string, string>();
@@ -212,5 +215,64 @@ describe('database migration v5 → v6', () => {
     expect(data).toMatchObject({ recommendationStates: [], trainingSessions: [], unreadable: 0 });
     expect((await readEverything(database)).media).toHaveLength(1);
     database.close();
+  });
+});
+
+describe('media kept by M8 flows', () => {
+  const accepted = { format: { extension: 'mp3', label: 'MP3', kind: 'audio', mimeTypes: ['audio/mpeg'], playable: true, transcribable: true }, kind: 'audio' } as const;
+
+  async function keptMedia(factory: IDBFactory) {
+    const listening = await IndexedDbListeningRepository.open(factory);
+    const speaking = await IndexedDbSpeakingRepository.open(factory);
+    const session = newFileSession(new File(['lecture-audio'], 'lecture.mp3', { type: 'audio/mpeg' }), accepted, NOW);
+    await listening.createSession(session, undefined, new Blob(['lecture-audio'], { type: 'audio/mpeg' }));
+    await speaking.putAttempt(speakingAttempt('kept', NOW, []), new Blob(['my-voice'], { type: 'audio/webm' }));
+    return { session, close: () => (listening.close(), speaking.close()) };
+  }
+
+  it('round-trips kept audio and recordings: restored sessions play and say so', async () => {
+    const sourceFactory = new IDBFactory();
+    const { session, close } = await keptMedia(sourceFactory);
+    const backup = await exported(await openAppDatabase(sourceFactory), true);
+    close();
+    expect(backup.media.map((item) => item.store).sort()).toEqual(['media', 'speakingRecordings']);
+
+    const targetFactory = new IDBFactory();
+    await applyImport(await openAppDatabase(targetFactory), backup, 'merge', { storage: null });
+    const listening = await IndexedDbListeningRepository.open(targetFactory);
+    const speaking = await IndexedDbSpeakingRepository.open(targetFactory);
+    expect(await listening.reconcileMedia(session.id)).toMatchObject({ present: true, repaired: null, session: { source: { mediaStored: true } } });
+    expect(await (await listening.getMedia(session.id))?.text()).toBe('lecture-audio');
+    expect(await speaking.reconcileRecording('kept')).toMatchObject({ present: true, repaired: null });
+    expect(await (await speaking.getRecording('kept'))?.text()).toBe('my-voice');
+    listening.close();
+    speaking.close();
+  });
+
+  it('lists the left-out media and restores the records as needing the file, never as saved', async () => {
+    const sourceFactory = new IDBFactory();
+    const { session, close } = await keptMedia(sourceFactory);
+    const backup = await exported(await openAppDatabase(sourceFactory), false);
+    close();
+    expect(backup.media).toEqual([]);
+
+    const targetFactory = new IDBFactory();
+    await applyImport(await openAppDatabase(targetFactory), backup, 'merge', { storage: null });
+    const listening = await IndexedDbListeningRepository.open(targetFactory);
+    const speaking = await IndexedDbSpeakingRepository.open(targetFactory);
+    // The import already cleared the flags, so nothing needs repairing and nothing claims to be saved.
+    expect(await listening.reconcileMedia(session.id)).toMatchObject({ present: false, repaired: null, session: { source: { mediaStored: false } } });
+    expect(await speaking.reconcileRecording('kept')).toMatchObject({ present: false, repaired: null, attempt: { recording: { stored: false } } });
+    listening.close();
+    speaking.close();
+  });
+
+  it('reports the omitted media in the export envelope', async () => {
+    const factory = new IDBFactory();
+    const { close } = await keptMedia(factory);
+    const result = await createBackup(await openAppDatabase(factory), { includeMedia: false, now: NOW, storage: null });
+    close();
+    expect(result.envelope.media.omitted.map((item) => item.store).sort()).toEqual(['media', 'speakingRecordings']);
+    expect(result.envelope.media.omitted.find((item) => item.store === 'media')?.label).toContain('lecture.mp3');
   });
 });

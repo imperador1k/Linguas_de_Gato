@@ -7,6 +7,7 @@ import {
 } from '@ldg/shared';
 import type { ListeningRepository, TranscriptContent } from '../storage/listening-repository';
 import { newFileSession } from '../storage/listening-storage';
+import { createSessionWithMedia, type CreatedSession } from '../storage/session-media';
 
 /** The provider returned no usable speech; nothing is created. */
 export class NoSpeechError extends Error {
@@ -55,24 +56,25 @@ export function transcriptFromResult(result: TranscriptionResult, mediaFileName:
 
 /**
  * Creates a persistent session for a freshly transcribed file, transcript
- * included, in one storage transaction. The media itself follows the M1 rule:
- * it is not copied into the browser unless the learner opts in later.
+ * included. With `keep` (the default for reasonably sized files, M8), a copy
+ * of the file is saved in the same transaction; if the copy can't be saved,
+ * the session and transcript still are (see `createSessionWithMedia`).
  */
 export async function createTranscribedSession(
   repository: ListeningRepository,
   file: File,
   accepted: AcceptedMediaFile,
   result: TranscriptionResult,
-  now = Date.now(),
-): Promise<ListeningSession> {
+  options: { readonly keep?: boolean; readonly now?: number } = {},
+): Promise<CreatedSession> {
+  const now = options.now ?? Date.now();
   const { summary, content } = transcriptFromResult(result, file.name, now);
   const session: ListeningSession = {
     ...newFileSession(file, accepted, now),
     transcript: summary,
     durationSeconds: result.durationSeconds,
   };
-  await repository.createSession(session, content);
-  return session;
+  return createSessionWithMedia(repository, session, { transcript: content, media: file, keep: options.keep ?? false });
 }
 
 /** Short learner-facing description of how a transcript was produced. */

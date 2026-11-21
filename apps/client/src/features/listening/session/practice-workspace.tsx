@@ -92,14 +92,15 @@ function SaveStatus({ persistent, saveError }: { persistent: boolean; saveError:
     return (
       <p className="inline-flex items-center gap-1.5 text-sm text-destructive">
         <TriangleAlert aria-hidden="true" className="size-4" />
-        Not saved
+        Progress not saved
       </p>
     );
   }
+  // "Progress", not "saved": whether the audio is kept is shown separately, next to the player.
   return persistent ? (
     <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
       <CircleCheck aria-hidden="true" className="size-4 text-success" />
-      Saved in this browser
+      Progress saved in this browser
     </p>
   ) : (
     <p className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">

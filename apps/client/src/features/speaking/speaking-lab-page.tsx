@@ -36,6 +36,7 @@ export function SpeakingLabPage() {
   const practise = usePractiseParam('speaking');
   const [topics, setTopics] = useState<CustomTopic[]>([]);
   const [attempts, setAttempts] = useState<SpeakingAttempt[] | null>(null);
+  const [storedRecordings, setStoredRecordings] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<TopicFilters>(NO_FILTERS);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -50,9 +51,10 @@ export function SpeakingLabPage() {
   const refresh = useCallback(async () => {
     if (!storage) return;
     try {
-      const [nextTopics, nextAttempts] = await Promise.all([storage.repository.listTopics(), storage.repository.listAttempts()]);
+      const [nextTopics, nextAttempts, recordingKeys] = await Promise.all([storage.repository.listTopics(), storage.repository.listAttempts(), storage.repository.listRecordingKeys()]);
       setTopics(nextTopics);
       setAttempts(nextAttempts);
+      setStoredRecordings(new Set(recordingKeys));
     } catch (caught) {
       setError(describeSpeakingStorageError(caught));
       setAttempts((current) => current ?? []);
@@ -192,7 +194,7 @@ export function SpeakingLabPage() {
             Reading your attempts…
           </p>
         ) : (
-          <HistoryView attempts={attempts} persistent={storage?.repository.persistent ?? false} onBrowseTopics={() => setView('topics')} onDelete={setPendingAttempt} />
+          <HistoryView attempts={attempts} storedRecordings={storedRecordings} persistent={storage?.repository.persistent ?? false} onBrowseTopics={() => setView('topics')} onDelete={setPendingAttempt} />
         )}
       </div>
 

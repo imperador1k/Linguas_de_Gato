@@ -8,6 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Notice } from '@/components/ui/notice';
+import { MediaStateBadge } from '@/components/ui/media-state-badge';
+import { recallSessionMedia } from '@/features/listening/storage/session-media-cache';
 import { practisePath } from '@/features/personalized-training/targeted-practice';
 import { useLearningEngine } from '@/features/progress/use-learning-engine';
 import { useCapabilities } from '@/hooks/use-capabilities';
@@ -90,6 +92,8 @@ function ServerNotice() {
 function WorkRow({ item, now, emphasis = false }: { item: WorkItem; now: number; emphasis?: boolean }) {
   const status = STATUS[item.status];
   const moduleLabel = MODULE_BY_ID.get(item.module)?.label ?? item.module;
+  // Only problems are worth a badge here: the audio needs the file, or is open but not saved.
+  const media = item.media === 'needs-file' && item.sessionId ? (recallSessionMedia(item.sessionId) ? 'this-visit' : 'needs-file') : null;
   return (
     <Link to={item.path} className="group flex items-start gap-3 px-4 py-3 transition-colors duration-150 hover:bg-accent/40">
       <ModuleIcon module={item.module} className="mt-1" />
@@ -101,6 +105,7 @@ function WorkRow({ item, now, emphasis = false }: { item: WorkItem; now: number;
           <span>{item.detail}</span>
           <span aria-hidden="true">·</span>
           <span>{whenLabel(item.at, now)}</span>
+          {media ? <MediaStateBadge state={media} /> : null}
         </span>
       </span>
       <Badge variant={status.variant} className="mt-0.5 hidden sm:inline-flex">

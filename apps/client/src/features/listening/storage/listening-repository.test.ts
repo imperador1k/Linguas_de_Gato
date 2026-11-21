@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import type { DictationRecord, ListeningSession, SubtitleCue } from '@ldg/shared';
+import { MAX_STORED_MEDIA_BYTES, type DictationRecord, type ListeningSession, type SubtitleCue } from '@ldg/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { openDatabase, StorageError, toStorageError } from '@/lib/storage/indexed-db';
 import { IndexedDbListeningRepository, LISTENING_DB_NAME, LISTENING_DB_VERSION } from './indexed-db-listening-repository';
@@ -150,6 +150,54 @@ describe.each(factories)('$name contract', ({ create, dispose }) => {
     expect(await repo.getMedia(session.id)).toBeNull();
   });
 
+  it('creates a session with its transcript and a media copy in one write (M8)', async () => {
+    const session = fileSession();
+    await repo.createSession(session, { cues }, new Blob(['the-audio'], { type: 'audio/mpeg' }));
+    expect((await repo.getSession(session.id))?.source).toMatchObject({ kind: 'file', mediaStored: true });
+    expect((await repo.getTranscript(session.id))?.cues).toEqual(cues);
+    expect(await (await repo.getMedia(session.id))?.text()).toBe('the-audio');
+    expect(await repo.listMediaKeys()).toEqual([session.id]);
+  });
+
+  it('refuses media over the cap and writes nothing', async () => {
+    const session = fileSession();
+    const huge = { size: MAX_STORED_MEDIA_BYTES + 1 } as Blob;
+    await expect(repo.createSession(session, { cues }, huge)).rejects.toBeInstanceOf(StorageError);
+    expect(await repo.getSession(session.id)).toBeNull();
+    await repo.createSession(session);
+    await expect(repo.saveMedia(session.id, huge)).rejects.toBeInstanceOf(StorageError);
+    expect((await repo.getSession(session.id))?.source).toMatchObject({ mediaStored: false });
+  });
+
+  it('reconciles a flag that claims a missing copy, without touching anything else', async () => {
+    const session = fileSession();
+    await repo.createSession(session, { cues });
+    // A record that says "stored" with no copy behind it (e.g. data cleared by hand).
+    await repo.updateSession(session.id, (current) => (current.source.kind === 'file' ? { ...current, source: { ...current.source, mediaStored: true } } : current));
+    const result = await repo.reconcileMedia(session.id);
+    expect(result).toMatchObject({ present: false, repaired: 'flag-cleared', session: { source: { mediaStored: false } } });
+    expect((await repo.getSession(session.id))?.source).toMatchObject({ mediaStored: false });
+    expect((await repo.getTranscript(session.id))?.cues).toEqual(cues);
+    // Idempotent.
+    expect((await repo.reconcileMedia(session.id))?.repaired).toBeNull();
+  });
+
+  it('reconciles an unflagged copy by marking it saved, never deleting it', async () => {
+    const session = fileSession();
+    await repo.createSession(session);
+    await repo.saveMedia(session.id, new Blob(['kept']));
+    await repo.updateSession(session.id, (current) => (current.source.kind === 'file' ? { ...current, source: { ...current.source, mediaStored: false } } : current));
+    expect(await repo.reconcileMedia(session.id)).toMatchObject({ present: true, repaired: 'flag-set', session: { source: { mediaStored: true } } });
+    expect(await (await repo.getMedia(session.id))?.text()).toBe('kept');
+  });
+
+  it('leaves YouTube sessions alone and reports missing sessions', async () => {
+    const video = newYouTubeSession({ videoId: 'dQw4w9WgXcQ' });
+    await repo.createSession(video);
+    expect(await repo.reconcileMedia(video.id)).toMatchObject({ present: false, repaired: null });
+    expect(await repo.reconcileMedia('nope')).toBeNull();
+  });
+
   it('deletes a session with its transcript, media and dictation', async () => {
     const keep = fileSession('keep.mp3');
     const drop = fileSession('drop.mp3');
@@ -185,6 +233,55 @@ describe('IndexedDbListeningRepository persistence', () => {
     expect((await second.listSessions()).map((item) => item.id)).toEqual([session.id]);
     expect((await second.getTranscript(session.id))?.cues).toEqual(cues);
     expect((await second.listDictation(session.id))[0]?.cueId).toBe('2');
+    second.close();
+  });
+
+  it('plays the kept audio after a reload: the session, flag and copy all survive (M8)', async () => {
+    const factory = new IDBFactory();
+    const first = await IndexedDbListeningRepository.open(factory);
+    const session = fileSession();
+    await first.createSession(session, { cues }, new Blob(['audio-bytes'], { type: 'audio/mpeg' }));
+    first.close();
+
+    const second = await IndexedDbListeningRepository.open(factory);
+    expect(await second.reconcileMedia(session.id)).toMatchObject({ present: true, repaired: null, session: { source: { mediaStored: true } } });
+    expect(await (await second.getMedia(session.id))?.text()).toBe('audio-bytes');
+    second.close();
+  });
+
+  it('writes nothing when the media part of a create fails', async () => {
+    const factory = new IDBFactory();
+    const repo = await IndexedDbListeningRepository.open(factory);
+    const session = fileSession();
+    // Not cloneable: the media put throws inside the transaction.
+    const broken = { size: 10, type: 'audio/mpeg', bad: () => undefined } as unknown as Blob;
+    await expect(repo.createSession(session, { cues }, broken)).rejects.toBeInstanceOf(StorageError);
+    expect(await repo.getSession(session.id)).toBeNull();
+    expect(await repo.getTranscript(session.id)).toBeNull();
+    expect(await repo.listMediaKeys()).toEqual([]);
+    repo.close();
+  });
+
+  it('repairs a missing copy found after a reload (data cleared outside the app)', async () => {
+    const factory = new IDBFactory();
+    const first = await IndexedDbListeningRepository.open(factory);
+    const session = fileSession();
+    await first.createSession(session, undefined, new Blob(['x']));
+    first.close();
+    // Remove only the media row, as a partial clear would.
+    const raw = await openDatabase({ name: LISTENING_DB_NAME, version: LISTENING_DB_VERSION, upgrade: () => undefined, factory });
+    await new Promise<void>((resolve, reject) => {
+      const transaction = raw.transaction('media', 'readwrite');
+      transaction.objectStore('media').delete(session.id);
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    raw.close();
+
+    const second = await IndexedDbListeningRepository.open(factory);
+    expect((await second.getSession(session.id))?.source).toMatchObject({ mediaStored: true });
+    expect(await second.reconcileMedia(session.id)).toMatchObject({ present: false, repaired: 'flag-cleared' });
+    expect((await second.getSession(session.id))?.source).toMatchObject({ mediaStored: false });
     second.close();
   });
 

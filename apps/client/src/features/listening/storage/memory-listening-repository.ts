@@ -6,11 +6,14 @@ import {
   type TranscriptRecord,
 } from '@ldg/shared';
 import {
+  assertStorableMedia,
+  mediaRepair,
   sortByLastOpened,
   sortSetsNewestFirst,
   toTranscriptRecord,
   withMediaStored,
   type ListeningRepository,
+  type MediaReconciliation,
   type TranscriptContent,
 } from './listening-repository';
 
@@ -36,10 +39,12 @@ export class MemoryListeningRepository implements ListeningRepository {
     return session ? structuredClone(session) : null;
   }
 
-  async createSession(session: ListeningSession, transcript?: TranscriptContent): Promise<void> {
+  async createSession(session: ListeningSession, transcript?: TranscriptContent, media?: Blob): Promise<void> {
     if (this.sessions.has(session.id)) throw new Error(`Session ${session.id} already exists.`);
-    this.sessions.set(session.id, structuredClone(session));
+    if (media) assertStorableMedia(media);
+    this.sessions.set(session.id, structuredClone(media ? withMediaStored(session, true, session.updatedAt) : session));
     if (transcript) this.transcripts.set(session.id, structuredClone(toTranscriptRecord(session.id, transcript)));
+    if (media) this.media.set(session.id, media);
   }
 
   async updateSession(
@@ -82,7 +87,23 @@ export class MemoryListeningRepository implements ListeningRepository {
     return this.media.get(sessionId) ?? null;
   }
 
+  async reconcileMedia(sessionId: string): Promise<MediaReconciliation | null> {
+    const current = this.sessions.get(sessionId);
+    if (!current) return null;
+    const present = this.media.has(sessionId);
+    const repaired = mediaRepair(current, present);
+    if (!repaired) return { session: structuredClone(current), present, repaired };
+    const next = withMediaStored(current, present, Date.now());
+    this.sessions.set(sessionId, next);
+    return { session: structuredClone(next), present, repaired };
+  }
+
+  async listMediaKeys(): Promise<string[]> {
+    return [...this.media.keys()];
+  }
+
   async saveMedia(sessionId: string, media: Blob): Promise<ListeningSession | null> {
+    assertStorableMedia(media);
     const current = this.sessions.get(sessionId);
     if (!current) return null;
     this.media.set(sessionId, media);

@@ -1,9 +1,11 @@
-import { formatTimestamp, type SpeakingAttempt } from '@ldg/shared';
-import { ArrowRight, AudioLines, CircleCheck, CircleDot, RotateCcw, Trash } from 'lucide-react';
+import { formatTimestamp, recordingState, type SpeakingAttempt } from '@ldg/shared';
+import { ArrowRight, CircleCheck, CircleDot, RotateCcw, Trash } from 'lucide-react';
 import { Link } from 'react-router';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { RecordingStateBadge } from '@/components/ui/media-state-badge';
+import { recallRecording } from './storage/speaking-storage';
 import { cn } from '@/lib/utils';
 import { CATEGORY_LABELS, findLibraryPrompt } from './prompt-library';
 
@@ -14,7 +16,20 @@ const monthFormatter = new Intl.DateTimeFormat('en-GB', { month: 'long', year: '
  * Every recorded attempt, newest first, grouped by month. Each row opens the
  * attempt (transcript, feedback, exercises and the recording if it was kept).
  */
-export function HistoryView({ attempts, persistent, onBrowseTopics, onDelete }: { attempts: readonly SpeakingAttempt[]; persistent: boolean; onBrowseTopics: () => void; onDelete: (attempt: SpeakingAttempt) => void }) {
+export function HistoryView({
+  attempts,
+  storedRecordings,
+  persistent,
+  onBrowseTopics,
+  onDelete,
+}: {
+  attempts: readonly SpeakingAttempt[];
+  /** Attempts whose recording really exists in the browser (not just flagged). */
+  storedRecordings: ReadonlySet<string>;
+  persistent: boolean;
+  onBrowseTopics: () => void;
+  onDelete: (attempt: SpeakingAttempt) => void;
+}) {
   if (attempts.length === 0) {
     return (
       <EmptyState
@@ -25,7 +40,7 @@ export function HistoryView({ attempts, persistent, onBrowseTopics, onDelete }: 
           </Button>
         }
       >
-        Record an answer to any topic. Each attempt keeps its transcript, its feedback and, if you choose to, the recording.
+        Record an answer to any topic. Each attempt keeps its transcript, its feedback and, unless you opt out, the recording.
       </EmptyState>
     );
   }
@@ -84,12 +99,7 @@ export function HistoryView({ attempts, persistent, onBrowseTopics, onDelete }: 
                           Transcript only · feedback not requested
                         </Badge>
                       )}
-                      {attempt.recording.stored ? (
-                        <Badge variant="outline">
-                          <AudioLines aria-hidden="true" />
-                          Recording kept
-                        </Badge>
-                      ) : null}
+                      <RecordingStateBadge state={recordingState(attempt.recording, { stored: storedRecordings.has(attempt.id), inMemory: recallRecording(attempt.id) !== null })} />
                     </span>
                   </Link>
                   <div className="flex shrink-0 items-center gap-1">

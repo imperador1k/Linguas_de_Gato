@@ -4,6 +4,7 @@ import type { TranscriptionResult } from '@ldg/shared';
 import { describe, expect, it } from 'vitest';
 import { IndexedDbListeningRepository } from '../storage/indexed-db-listening-repository';
 import { MemoryListeningRepository } from '../storage/memory-listening-repository';
+import { StorageError } from '@/lib/storage/indexed-db';
 import { NoSpeechError, createTranscribedSession, describeTranscriptSource, transcriptFromResult } from './transcribed-session';
 
 const accepted = {
@@ -69,7 +70,7 @@ describe('createTranscribedSession', () => {
   it('creates a persistent session with its transcript that survives a reload', async () => {
     const factory = new IDBFactory();
     const first = await IndexedDbListeningRepository.open(factory);
-    const session = await createTranscribedSession(first, file, accepted, result, 5000);
+    const { session } = await createTranscribedSession(first, file, accepted, result, { now: 5000 });
     first.close();
 
     // A fresh connection is what a page reload sees.
@@ -85,9 +86,33 @@ describe('createTranscribedSession', () => {
     expect(transcript?.cues.map((cue) => cue.text)).toEqual(['I arrived late.', 'The meeting had already started.']);
     expect(transcript?.words?.[1]).toEqual({ text: 'arrived', startMs: 300, endMs: 800 });
     expect(transcript?.segments?.[0]?.avgLogprob).toBe(-0.2);
-    // The media is never copied by default (M1 rule).
+    // Without `keep`, the media is not copied.
     expect(await reopened.getMedia(session.id)).toBeNull();
     reopened.close();
+  });
+
+  it('keeps the audio with the session when asked, so it plays after a reload', async () => {
+    const factory = new IDBFactory();
+    const first = await IndexedDbListeningRepository.open(factory);
+    const created = await createTranscribedSession(first, file, accepted, result, { keep: true, now: 5000 });
+    expect(created).toMatchObject({ kept: true, issue: null, session: { source: { mediaStored: true } } });
+    first.close();
+
+    const reopened = await IndexedDbListeningRepository.open(factory);
+    expect(await reopened.getSession(created.session.id)).toMatchObject({ source: { mediaStored: true } });
+    const media = await reopened.getMedia(created.session.id);
+    expect(await media?.text()).toBe('fake-audio-bytes');
+    reopened.close();
+  });
+
+  it('still saves the transcript when the audio does not fit', async () => {
+    const repository = new MemoryListeningRepository();
+    const original = repository.createSession.bind(repository);
+    repository.createSession = (session, transcript, media) => (media ? Promise.reject(new StorageError('quota')) : original(session, transcript));
+    const created = await createTranscribedSession(repository, file, accepted, result, { keep: true });
+    expect(created).toMatchObject({ kept: false, issue: 'quota', session: { source: { mediaStored: false } } });
+    expect((await repository.getTranscript(created.session.id))?.cues).toHaveLength(2);
+    expect(await repository.getMedia(created.session.id)).toBeNull();
   });
 
   it('creates nothing when there is no speech', async () => {
@@ -100,7 +125,7 @@ describe('createTranscribedSession', () => {
 
   it('works with a transcript that has segments but no word timestamps', async () => {
     const repository = new MemoryListeningRepository();
-    const session = await createTranscribedSession(repository, file, accepted, { ...result, words: [] });
+    const { session } = await createTranscribedSession(repository, file, accepted, { ...result, words: [] });
     const transcript = await repository.getTranscript(session.id);
     expect(transcript?.cues).toEqual([{ id: '1', startMs: 0, endMs: 6000, text: result.text }]);
     expect(transcript?.words).toEqual([]);

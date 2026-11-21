@@ -31,6 +31,19 @@ export interface WorkItem {
   readonly path: string;
   readonly at: number;
   readonly status: WorkStatus;
+  /**
+   * Listening sessions from a local file: whether a saved copy of the audio
+   * exists (from the record's flag; the page may refine it with what is open
+   * in the tab). Absent for everything else.
+   */
+  readonly media?: 'audio-saved' | 'needs-file';
+  /** The session the media state belongs to (for refining it in the UI). */
+  readonly sessionId?: string;
+}
+
+function mediaOf(session: { readonly id: string; readonly source: { readonly kind: string; readonly mediaStored?: boolean } }): Pick<WorkItem, 'media' | 'sessionId'> {
+  if (session.source.kind !== 'file') return {};
+  return { media: session.source.mediaStored ? 'audio-saved' : 'needs-file', sessionId: session.id };
 }
 
 const DAY = 86_400_000;
@@ -95,7 +108,7 @@ export function unfinishedWork(snapshot: TodaySnapshot, now: number): WorkItem[]
   for (const set of snapshot.listeningExerciseSets) {
     const session = sessions.get(set.sessionId);
     if (set.submittedAt !== null || !session || set.answers.length === 0) continue;
-    items.push({ id: `listening-questions:${set.id}`, module: 'listening', title: session.title, detail: `Questions · ${set.answers.length} of ${set.questions.length} answered`, path: `/listening/session/${session.id}?mode=exercises`, at: set.updatedAt, status: 'in_progress' });
+    items.push({ id: `listening-questions:${set.id}`, module: 'listening', title: session.title, detail: `Questions · ${set.answers.length} of ${set.questions.length} answered`, path: `/listening/session/${session.id}?mode=exercises`, at: set.updatedAt, status: 'in_progress', ...mediaOf(session) });
   }
 
   // Texts being read.
@@ -118,9 +131,9 @@ export function unfinishedWork(snapshot: TodaySnapshot, now: number): WorkItem[]
     const dictation = dictationBySession.get(session.id);
     const total = session.transcript?.cueCount ?? 0;
     if (dictation && total > 0 && dictation.lines < total) {
-      items.push({ id: `listening:${session.id}`, module: 'listening', title: session.title, detail: `Dictation · ${dictation.lines} of ${plural(total, 'line')}`, path: `/listening/session/${session.id}?mode=dictation`, at: Math.max(dictation.lastAt, session.lastOpenedAt), status: 'in_progress' });
+      items.push({ id: `listening:${session.id}`, module: 'listening', title: session.title, detail: `Dictation · ${dictation.lines} of ${plural(total, 'line')}`, path: `/listening/session/${session.id}?mode=dictation`, at: Math.max(dictation.lastAt, session.lastOpenedAt), status: 'in_progress', ...mediaOf(session) });
     } else if (!dictation && session.playback.positionSeconds > 0 && recent(session.lastOpenedAt)) {
-      items.push({ id: `listening:${session.id}`, module: 'listening', title: session.title, detail: `Stopped at ${formatClock(session.playback.positionSeconds)}`, path: `/listening/session/${session.id}`, at: session.lastOpenedAt, status: 'in_progress' });
+      items.push({ id: `listening:${session.id}`, module: 'listening', title: session.title, detail: `Stopped at ${formatClock(session.playback.positionSeconds)}`, path: `/listening/session/${session.id}`, at: session.lastOpenedAt, status: 'in_progress', ...mediaOf(session) });
     }
   }
 

@@ -1,4 +1,6 @@
-import { formatAccuracy, formatBytes, summarizeDictation, type ListeningSession } from '@ldg/shared';
+import { formatAccuracy, formatBytes, listeningMediaState, summarizeDictation, type ListeningMediaState, type ListeningSession } from '@ldg/shared';
+import { MediaStateBadge } from '@/components/ui/media-state-badge';
+import { recallSessionMedia } from '../storage/session-media-cache';
 import { ArrowRight, FileMusic, Plus, SquarePlay, Trash } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
@@ -18,15 +20,20 @@ interface SessionRow {
   readonly dictation: string | null;
   readonly dictationDone: boolean;
   readonly questionSets: number;
+  readonly media: ListeningMediaState;
 }
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 async function loadRows(storage: ListeningStorage): Promise<SessionRow[]> {
-  const sessions = await storage.repository.listSessions();
+  const [sessions, mediaKeys] = await Promise.all([storage.repository.listSessions(), storage.repository.listMediaKeys()]);
+  // Saved means the copy exists, not just that the record says so.
+  const stored = new Set(mediaKeys);
+  const mediaOf = (session: ListeningSession) => listeningMediaState(session.source, { stored: stored.has(session.id), inMemory: recallSessionMedia(session.id) !== null });
   const rows = await Promise.all(
     sessions.map(async (session): Promise<SessionRow> => {
-      if (!session.transcript) return { session, dictation: null, dictationDone: false, questionSets: 0 };
+      const media = mediaOf(session);
+      if (!session.transcript) return { session, dictation: null, dictationDone: false, questionSets: 0, media };
       const [transcript, records, sets] = await Promise.all([storage.repository.getTranscript(session.id), storage.repository.listDictation(session.id), storage.repository.listExerciseSets(session.id)]);
       const summary = summarizeDictation(transcript?.cues ?? [], records);
       const average = summary.averageLatestAccuracy === null ? '' : ` · ${formatAccuracy(summary.averageLatestAccuracy)}`;
@@ -35,6 +42,7 @@ async function loadRows(storage: ListeningStorage): Promise<SessionRow[]> {
         dictation: summary.practisedLines === 0 ? null : `Dictation ${summary.practisedLines}/${summary.totalLines}${average}`,
         dictationDone: summary.totalLines > 0 && summary.practisedLines >= summary.totalLines,
         questionSets: sets.length,
+        media,
       };
     }),
   );
@@ -118,17 +126,27 @@ export function SessionLibrary({ storage, onNewSession }: { storage: ListeningSt
       ) : null}
 
       {resume ? (
-        <ContinueCard
-          title={resume.session.title}
-          detail={resume.dictation ?? `${sourceLine(resume.session)} · not dictated yet`}
-          to={`/listening/session/${resume.session.id}?mode=dictation`}
-          action="Continue dictation"
-          secondary={
-            <Link to={`/listening/session/${resume.session.id}`} className={buttonVariants({ variant: 'ghost' })}>
-              Open
-            </Link>
-          }
-        />
+        resume.media === 'needs-file' ? (
+          // Dictation can't play without the audio: say so before the learner gets there.
+          <ContinueCard
+            title={resume.session.title}
+            detail={`${resume.dictation ?? 'Not dictated yet'} · the audio needs the original file`}
+            to={`/listening/session/${resume.session.id}`}
+            action="Reconnect the file"
+          />
+        ) : (
+          <ContinueCard
+            title={resume.session.title}
+            detail={resume.dictation ?? `${sourceLine(resume.session)} · not dictated yet`}
+            to={`/listening/session/${resume.session.id}?mode=dictation`}
+            action="Continue dictation"
+            secondary={
+              <Link to={`/listening/session/${resume.session.id}`} className={buttonVariants({ variant: 'ghost' })}>
+                Open
+              </Link>
+            }
+          />
+        )
       ) : null}
 
       {rows.length === 0 ? (
@@ -178,7 +196,7 @@ export function SessionLibrary({ storage, onNewSession }: { storage: ListeningSt
             <p className="rounded-lg border border-dashed px-4 py-5 text-sm text-muted-foreground">No sessions match.</p>
           ) : (
             <ul className="divide-y rounded-lg border bg-card" aria-label="Saved sessions">
-              {visible.map(({ session, dictation, questionSets }) => {
+              {visible.map(({ session, dictation, questionSets, media }) => {
                 const Icon = session.source.kind === 'youtube' ? SquarePlay : FileMusic;
                 return (
                   <li key={session.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:gap-3 sm:px-4">
@@ -189,7 +207,10 @@ export function SessionLibrary({ storage, onNewSession }: { storage: ListeningSt
                           <span className="font-medium break-words group-hover:underline">{session.title}</span>
                           <ArrowRight aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
                         </span>
-                        <span className="mt-0.5 block text-xs text-muted-foreground">{sourceLine(session)}</span>
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted-foreground">
+                          <span>{sourceLine(session)}</span>
+                          <MediaStateBadge state={media} />
+                        </span>
                         <span className="mt-0.5 block text-xs text-muted-foreground">
                           {dictation ? `${dictation} · ` : ''}
                           {questionSets > 0 ? `${questionSets} question set${questionSets === 1 ? '' : 's'} · ` : ''}

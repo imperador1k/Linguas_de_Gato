@@ -3,6 +3,7 @@ export * from './domain/languages.js';
 export * from './domain/time.js';
 export * from './domain/media.js';
 export * from './domain/media-signature.js';
+export * from './domain/media-retention.js';
 export * from './domain/youtube.js';
 export * from './domain/subtitles.js';
 export * from './domain/text-compare.js';

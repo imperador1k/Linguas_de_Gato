@@ -1,5 +1,12 @@
 import type { CustomTopic, SpeakingAttempt } from '@ldg/shared';
-import { sortNewestFirst, withRecordingStored, type SpeakingRepository } from './speaking-repository';
+import {
+  assertStorableRecording,
+  recordingRepair,
+  sortNewestFirst,
+  withRecordingStored,
+  type RecordingReconciliation,
+  type SpeakingRepository,
+} from './speaking-repository';
 
 /** Fallback when IndexedDB is unavailable: same contract, data lasts until the tab closes. */
 export class MemorySpeakingRepository implements SpeakingRepository {
@@ -18,8 +25,25 @@ export class MemorySpeakingRepository implements SpeakingRepository {
     return attempt ? structuredClone(attempt) : null;
   }
 
-  async putAttempt(attempt: SpeakingAttempt): Promise<void> {
-    this.attempts.set(attempt.id, structuredClone(attempt));
+  async putAttempt(attempt: SpeakingAttempt, recording?: Blob): Promise<void> {
+    if (recording) assertStorableRecording(recording);
+    this.attempts.set(attempt.id, structuredClone(recording ? withRecordingStored(attempt, true, attempt.updatedAt) : attempt));
+    if (recording) this.recordings.set(attempt.id, recording);
+  }
+
+  async reconcileRecording(attemptId: string): Promise<RecordingReconciliation | null> {
+    const current = this.attempts.get(attemptId);
+    if (!current) return null;
+    const present = this.recordings.has(attemptId);
+    const repaired = recordingRepair(current, present);
+    if (!repaired) return { attempt: structuredClone(current), present, repaired };
+    const next = withRecordingStored(current, present, Date.now());
+    this.attempts.set(attemptId, next);
+    return { attempt: structuredClone(next), present, repaired };
+  }
+
+  async listRecordingKeys(): Promise<string[]> {
+    return [...this.recordings.keys()];
   }
 
   async updateAttempt(id: string, update: (attempt: SpeakingAttempt) => SpeakingAttempt): Promise<SpeakingAttempt | null> {
@@ -40,6 +64,7 @@ export class MemorySpeakingRepository implements SpeakingRepository {
   }
 
   async saveRecording(attemptId: string, recording: Blob): Promise<SpeakingAttempt | null> {
+    assertStorableRecording(recording);
     const current = this.attempts.get(attemptId);
     if (!current) return null;
     this.recordings.set(attemptId, recording);

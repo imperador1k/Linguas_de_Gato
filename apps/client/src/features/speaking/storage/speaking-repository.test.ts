@@ -1,9 +1,9 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import type { CustomTopic, SpeakingAttempt } from '@ldg/shared';
+import { MAX_STORED_RECORDING_BYTES, type CustomTopic, type SpeakingAttempt } from '@ldg/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { APP_DB_NAME, APP_DB_VERSION, openAppDatabase } from '@/lib/storage/app-database';
-import { openDatabase } from '@/lib/storage/indexed-db';
+import { openDatabase, StorageError } from '@/lib/storage/indexed-db';
 import { IndexedDbListeningRepository } from '../../listening/storage/indexed-db-listening-repository';
 import { IndexedDbSpeakingRepository } from './indexed-db-speaking-repository';
 import { MemorySpeakingRepository } from './memory-speaking-repository';
@@ -94,7 +94,7 @@ describe.each(factories)('$name contract', ({ create, dispose }) => {
     expect(await repo.updateAttempt('missing', (current) => current)).toBeNull();
   });
 
-  it('keeps recordings opt-in and separately deletable', async () => {
+  it('stores recordings only when given, and deletes them separately', async () => {
     await repo.putAttempt(attempt('a'));
     expect(await repo.getRecording('a')).toBeNull();
 
@@ -107,6 +107,39 @@ describe.each(factories)('$name contract', ({ create, dispose }) => {
     expect(await repo.getRecording('a')).toBeNull();
     // The transcript and feedback survive deleting the audio.
     expect((await repo.getAttempt('a'))?.transcript.segments).toHaveLength(1);
+  });
+
+  it('saves an attempt and its recording together (M8)', async () => {
+    await repo.putAttempt(attempt('a'), new Blob(['voice'], { type: 'audio/webm' }));
+    expect((await repo.getAttempt('a'))?.recording.stored).toBe(true);
+    expect(await (await repo.getRecording('a'))?.text()).toBe('voice');
+    expect(await repo.listRecordingKeys()).toEqual(['a']);
+  });
+
+  it('never touches an existing recording when the attempt is updated without one', async () => {
+    await repo.putAttempt(attempt('a'), new Blob(['voice']));
+    const stored = await repo.getAttempt('a');
+    if (!stored) throw new Error('missing');
+    await repo.putAttempt({ ...stored, exerciseResponses: [] });
+    expect(await (await repo.getRecording('a'))?.text()).toBe('voice');
+  });
+
+  it('refuses recordings over the cap and writes nothing', async () => {
+    const huge = { size: MAX_STORED_RECORDING_BYTES + 1 } as Blob;
+    await expect(repo.putAttempt(attempt('a'), huge)).rejects.toBeInstanceOf(StorageError);
+    expect(await repo.getAttempt('a')).toBeNull();
+  });
+
+  it('reconciles the recording flag with what is stored, never deleting audio', async () => {
+    await repo.putAttempt({ ...attempt('flagged'), recording: { stored: true, mimeType: 'audio/webm' } });
+    expect(await repo.reconcileRecording('flagged')).toMatchObject({ present: false, repaired: 'flag-cleared', attempt: { recording: { stored: false } } });
+    await repo.putAttempt(attempt('orphan'), new Blob(['voice']));
+    const orphan = await repo.getAttempt('orphan');
+    if (!orphan) throw new Error('missing');
+    await repo.putAttempt({ ...orphan, recording: { ...orphan.recording, stored: false } });
+    expect(await repo.reconcileRecording('orphan')).toMatchObject({ present: true, repaired: 'flag-set' });
+    expect(await (await repo.getRecording('orphan'))?.text()).toBe('voice');
+    expect(await repo.reconcileRecording('gone')).toBeNull();
   });
 
   it('deletes an attempt together with its recording', async () => {
@@ -140,6 +173,25 @@ describe('IndexedDbSpeakingRepository persistence', () => {
     expect((await second.getAttempt('a'))?.recording.stored).toBe(true);
     expect(await second.getRecording('a')).toBeInstanceOf(Blob);
     second.close();
+  });
+
+  it('keeps a saved recording across a reload (M8)', async () => {
+    const factory = new IDBFactory();
+    const first = await IndexedDbSpeakingRepository.open(factory);
+    await first.putAttempt(attempt('a'), new Blob(['voice'], { type: 'audio/webm' }));
+    first.close();
+    const second = await IndexedDbSpeakingRepository.open(factory);
+    expect(await second.reconcileRecording('a')).toMatchObject({ present: true, repaired: null, attempt: { recording: { stored: true } } });
+    expect(await (await second.getRecording('a'))?.text()).toBe('voice');
+    second.close();
+  });
+
+  it('writes nothing when the recording part fails', async () => {
+    const repo = await IndexedDbSpeakingRepository.open(new IDBFactory());
+    const broken = { size: 10, type: 'audio/webm', bad: () => undefined } as unknown as Blob;
+    await expect(repo.putAttempt(attempt('a'), broken)).rejects.toBeInstanceOf(StorageError);
+    expect(await repo.getAttempt('a')).toBeNull();
+    repo.close();
   });
 
   it('rejects invalid attempts before writing', async () => {

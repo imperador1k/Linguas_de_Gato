@@ -91,7 +91,7 @@ export function PrivacySettings() {
     <div className="flex flex-col gap-6">
       <SettingsGroup title="What stays on this device">
         <ul className="flex list-disc flex-col gap-1.5 pl-5 text-sm leading-relaxed">
-          <li>All your practice: sessions, transcripts, recordings you choose to keep, texts, attempts, feedback, vocabulary, reviews and progress. It is stored in this browser (IndexedDB), not on a server and not in an account.</li>
+          <li>All your practice: sessions, transcripts, the audio files and recordings you keep (kept by default for reasonable sizes; you can opt out or remove them at any time), texts, attempts, feedback, vocabulary, reviews and progress. It is stored in this browser (IndexedDB), not on a server and not in an account.</li>
           <li>Your preferences, in this browser’s local storage.</li>
           <li>Backups are files you download. They are never uploaded and contain no API keys.</li>
           <li>Progress, insights and recommendations are calculated in the browser.</li>

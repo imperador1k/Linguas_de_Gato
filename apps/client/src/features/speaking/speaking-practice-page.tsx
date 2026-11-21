@@ -2,6 +2,7 @@ import {
   DEFAULT_TRANSCRIPTION_MAX_BYTES,
   SPEAKING_LIMITS,
   TARGET_DURATIONS_SECONDS,
+  MAX_STORED_RECORDING_BYTES,
   formatBytes,
   formatTimestamp,
   type GeneratedSpeakingDetails,
@@ -31,7 +32,8 @@ import { CEFR_DISCLAIMER, FORMAT_LABELS } from './generation-labels';
 import { CATEGORY_LABELS, findLibraryPrompt, toSpeakingPrompt } from './prompt-library';
 import { RecorderPanel } from './recorder/recorder-panel';
 import { useAudioRecorder } from './recorder/use-audio-recorder';
-import { describeSpeakingStorageError, rememberRecording, useSpeakingStorage } from './storage/speaking-storage';
+import { describeSpeakingStorageError, saveAttemptWithRecording, useSpeakingStorage } from './storage/speaking-storage';
+import { KeepMediaOption, useKeepChoice } from '@/components/ui/keep-media-option';
 import { TranscriptReview } from './transcript-review';
 import { useWorkInProgress } from '@/lib/work-in-progress';
 
@@ -299,6 +301,21 @@ export function SpeakingPracticePage() {
   const job = useTranscriptionJob();
   const recording = recorderState.status === 'recorded' ? recorderState.recording : null;
   const recordingUrl = useObjectUrl(recording?.blob ?? null);
+  const keepChoice = useKeepChoice(recording?.blob.size ?? null, storage?.repository.persistent ?? true, MAX_STORED_RECORDING_BYTES);
+  const keepOption =
+    keepChoice.plan && recording ? (
+      <KeepMediaOption
+        plan={keepChoice.plan}
+        size={recording.blob.size}
+        checked={keepChoice.keep}
+        onChange={keepChoice.setKeep}
+        label="Keep my recording in this browser"
+        what="the recording"
+        forgetsTo="the recording is lost when you reload or close the tab; the transcript and feedback are kept"
+        maxBytes={MAX_STORED_RECORDING_BYTES}
+        disabled={saving}
+      />
+    ) : null;
 
   // Load the task: a library prompt, or a saved custom topic.
   useEffect(() => {
@@ -390,13 +407,13 @@ export function SpeakingPracticePage() {
       now: Date.now(),
     });
     try {
-      await storage.repository.putAttempt(attempt);
+      // The recording is kept with the attempt when chosen; if it can't be, the attempt is still saved (the attempt page says so).
+      await saveAttemptWithRecording(storage.repository, attempt, recording.blob, keepChoice.keep);
     } catch (error) {
       setSaving(false);
       setSaveError(`The attempt couldn't be saved. ${describeSpeakingStorageError(error)}`);
       return;
     }
-    rememberRecording(attempt.id, recording.blob);
     navigate(`/speaking/attempts/${attempt.id}?assess=1`);
   }
 
@@ -460,6 +477,7 @@ export function SpeakingPracticePage() {
               {mode === 'guided' ? 'Guided' : 'Free'} · suggested {formatTimestamp(target)}
             </p>
           )}
+          {stage === 'review' ? keepOption : null}
           {stage === 'review' ? (
             <TranscriptReview
               audioUrl={recordingUrl}
@@ -481,6 +499,7 @@ export function SpeakingPracticePage() {
               </CardHeader>
               <CardContent className="flex flex-col gap-5">
                 {recordingUrl ? <audio src={recordingUrl} controls preload="metadata" className="w-full" aria-label="Your recording" /> : null}
+                {keepOption}
                 {transcriptionAvailable ? (
                   <TranscriptionOptionsFields value={transcriptionOptions} onChange={setTranscriptionOptions} disabled={busy} />
                 ) : null}
