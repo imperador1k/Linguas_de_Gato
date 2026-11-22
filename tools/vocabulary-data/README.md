@@ -4,6 +4,8 @@ Offline tooling that turns raw English frequency lists and lexical references in
 
 Pipeline version 0.1.0. Python ≥ 3.11 (tested with 3.11.9).
 
+**English only (target language `en`).** The infrastructure is meant to be shared: register, licensing and profiles, acquisition, manifests, validation, reports, pilot and review package. The sources, morphology, exclusion rules and checklists are English adapters. A future language adds its own adapters, sources and licence decisions. See `docs/VOCABULARY_CONTENT_MODEL.md` §8 for the parts that are hardcoded today.
+
 ## 1. What it does
 
 1. Verifies each input against the checksum pinned in the source register (`sources/manifest.json`).
@@ -175,6 +177,25 @@ Every entry carries:
 - candidates with potential false-positive signals, which are listed in the report.
 
 If a group has fewer eligible candidates than requested, the shortfall is reported and nothing is padded.
+
+**Human-review package** (redistributable only; see `docs/VOCABULARY_PILOT_REVIEW.md`):
+
+```bash
+python -m vocabulary_data review-package --pilot pilot-v3-a --run final-c --out pilot-v3-review
+python -m vocabulary_data validate-review pilot-v3-review --pilot pilot-v3-a
+```
+
+What it writes:
+- `review-all.csv`: every pilot candidate once, with provenance columns and empty review columns;
+- `review-batch-1..8.csv`: the same rows dealt round-robin into batches;
+- `COLUMNS.md`, `pilot-overview.md`;
+- `function-word-coverage.md` / `.csv`: measured against `config/function-word-checklist.json`, a review aid, never lexical evidence;
+- `ATTRIBUTION.md` and `review-manifest.json`.
+
+How it behaves:
+- **Traceability:** the pilot must have been built from the given run (its candidates checksum is checked).
+- **Validation:** `validate-review` checks that every candidate appears exactly once (all rows and batches), that checksums and columns match, that review columns are empty, and that no restricted trace appears.
+- **`--replace`:** regenerates a package in place, only when the folder holds a package of the same pilot and run.
 
 `crosscheck-pilot` looks up each proposed entry in a restricted run (ESDB readings, everyday frequency) to help reviewers. Its output is restricted, stays under `output/restricted/`, and never feeds back into the proposal.
 
