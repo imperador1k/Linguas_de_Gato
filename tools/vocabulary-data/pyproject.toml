@@ -1,0 +1,26 @@
+[project]
+name = "vocabulary-data"
+version = "0.1.0"
+description = "Reproducible candidate generation for the Linguas de Gato English vocabulary library (offline tooling, not part of the app)."
+readme = "README.md"
+requires-python = ">=3.11"
+# The core pipeline and its tests use only the standard library.
+dependencies = []
+
+[project.optional-dependencies]
+# Exact versions, also listed in requirements-wordfreq.txt (the file used for installation).
+wordfreq = [
+  "wordfreq==3.1.1",
+  "ftfy==6.3.1",
+  "langcodes==3.5.1",
+  "locate==1.1.1",
+  "msgpack==1.2.4",
+  "regex==2026.11.7",
+  "wcwidth==0.9.4",
+]
+
+[project.scripts]
+vocabulary-data = "vocabulary_data.cli:main"
+
+[tool.setuptools]
+packages = ["vocabulary_data"]

@@ -1,0 +1,62 @@
+{
+  "format": "vocabulary-data-config",
+  "version": 1,
+  "profile": "redistributable",
+  "description": "Profile B: redistributable candidate research. Only sources approved for redistribution with attribution (Google Books top lists, CC BY 3.0; Open English WordNet, CC BY 4.0). Outputs go to output/redistributable/.",
+  "language": "en",
+  "raw_dir": "raw",
+  "sources": {
+    "google-books-top-wordlists": {
+      "enabled": true,
+      "lower_file": "top_english_words_lower_100000.txt",
+      "mixed_file": "top_english_words_mixed_100000.txt",
+      "pool_top_n": 60000
+    },
+    "oewn-2025": {
+      "enabled": true,
+      "file": "english-wordnet-2025.xml.gz"
+    }
+  },
+  "ranking": {
+    "method": "primary",
+    "primary_source": "google-books-top-wordlists",
+    "secondary_source": null,
+    "disagreement_log10_threshold": 1.0
+  },
+  "flags": {
+    "proper_name_case_ratio": 10,
+    "acronym_case_ratio": 10,
+    "keep_single_letters": ["a", "i"],
+    "proper_lexfiles_ordinary": ["noun.time", "noun.communication", "adj.pert", "adj.all"],
+    "foreign_function_words": ["de", "la", "le", "les", "des", "du", "et", "en", "der", "die", "das", "und", "von", "zur", "el", "los", "las", "il", "que", "por", "est", "sur", "dans", "une"],
+    "ocr_artefacts": ["tbe", "tlie", "tiie", "thc", "aud", "liave", "wliich", "whieh", "wbo", "sbe", "bnt", "niay", "ouly", "yourseif", "fuch", "moft", "thefe", "fome"],
+    "s_contraction_bases": ["it", "he", "she", "that", "there", "here", "what", "who", "where", "when", "why", "how", "let", "this"]
+  },
+  "exclusions": {
+    "contains_digit": true,
+    "initial": true,
+    "non_letter_symbol": true,
+    "single_letter": true,
+    "roman_numeral": true,
+    "ocr_artefact": true,
+    "clitic_fragment": true,
+    "possessive_form": true
+  },
+  "report": {
+    "sample_size": 15,
+    "rank_windows": [5000, 10000, 20000, 30000]
+  },
+  "pilot": {
+    "rank_bands": [1000, 3000, 6000, 12000, 25000, 60000],
+    "core_per_band": [55, 65, 65, 55, 40, 20],
+    "irregular": 24,
+    "variant_pairs": 10,
+    "review_max_rank": 12000,
+    "review": {
+      "capitalized_ordinary_word": 14,
+      "acronym_likely": 8,
+      "capitalization_ambiguous": 14,
+      "ambiguous_explicit": 20
+    }
+  }
+}

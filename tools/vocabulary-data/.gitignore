@@ -1,0 +1,10 @@
+# Local Python environment
+.venv/
+__pycache__/
+*.pyc
+
+# Downloaded source data: never committed (licences, size). Re-create with `fetch`.
+raw/
+
+# Generated runs: reviewed locally, not committed by default.
+output/

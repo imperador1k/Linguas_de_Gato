@@ -1,0 +1,267 @@
+{
+  "format": "vocabulary-data-sources",
+  "version": 1,
+  "sources": [
+    {
+      "id": "google-books-top-wordlists",
+      "name": "top-english-wordlists (Google Books Ngram, English 20120701, 1950-2008)",
+      "url": "https://github.com/david47k/top-english-wordlists",
+      "publisher": "David Atkinson (compilation); Google (underlying Books Ngram dataset)",
+      "version": "commit b7585f32cee8e140001054ad5b0bbf373245c360 (2020-07-06)",
+      "accessed": "2026-11-21",
+      "status": "approved",
+      "distribution": "attribution",
+      "profiles": ["restricted", "redistributable"],
+      "licence": {
+        "id": "CC-BY-3.0",
+        "url": "https://creativecommons.org/licenses/by/3.0/",
+        "evidence": "Repository README: 'This compilation is licensed under a Creative Commons Attribution 3.0 Unported License.' (no LICENSE file in the repository). Upstream: Google's datasets page (https://storage.googleapis.com/books/ngrams/books/datasetsv3.html) states the same licence for the Ngram compilation.",
+        "commercial_use": true,
+        "modification": true,
+        "redistribution": true,
+        "attribution_required": true,
+        "share_alike": false
+      },
+      "attribution": "Frequency ranks derived from the Google Books Ngram Viewer dataset, English Version 20120701 (Google, CC BY 3.0, http://books.google.com/ngrams), via 'top-english-wordlists' by David Atkinson (https://github.com/david47k/top-english-wordlists, commit b7585f3, CC BY 3.0). Changes: years 1950-2008 summed, ranks only, normalised and filtered.",
+      "role": "Secondary frequency evidence (edited books) and capitalisation evidence for names and acronyms.",
+      "limitations": [
+        "Printed books only, 1950-2008 (the README's '1950 to 2012' is the dataset release year); no speech, little recent vocabulary.",
+        "Tokens, not lemmas: inflected forms are separate entries; no multiword or hyphenated expressions.",
+        "Raw counts summed over 59 years and then stripped: only ranks survive.",
+        "Contains initials, abbreviations, names, OCR errors and foreign function words.",
+        "The repository's part-of-speech lists are automatic tagger output and are not used."
+      ],
+      "kind": "files",
+      "files": [
+        {
+          "name": "top_english_words_lower_100000.txt",
+          "url": "https://raw.githubusercontent.com/david47k/top-english-wordlists/b7585f32cee8e140001054ad5b0bbf373245c360/top_english_words_lower_100000.txt",
+          "sha256": "92a1379beb9399073a2b19b1d7b22bf90384f63baa9e4dde921fc540e70106c7",
+          "bytes": 854114
+        },
+        {
+          "name": "top_english_words_mixed_100000.txt",
+          "url": "https://raw.githubusercontent.com/david47k/top-english-wordlists/b7585f32cee8e140001054ad5b0bbf373245c360/top_english_words_mixed_100000.txt",
+          "sha256": "8b151055e12d2761ffd6d2a39eb0c30c49ec19a276b142a21fbc38373904fc2c",
+          "bytes": 839408
+        }
+      ]
+    },
+    {
+      "id": "wordfreq",
+      "name": "wordfreq (English 'large' word list)",
+      "url": "https://github.com/rspeer/wordfreq",
+      "publisher": "Robyn Speer",
+      "version": "3.1.1 (PyPI, 2023-11-21); repository HEAD 912caf64b657478d1dff1138efdc078947d54bb1; data frozen as 'a snapshot of language ... up through 2021' (SUNSET.md, September 2024)",
+      "accessed": "2026-11-21",
+      "status": "approved_internal",
+      "distribution": "restricted",
+      "profiles": ["restricted"],
+      "licence": {
+        "id": "Apache-2.0 (code); CC-BY-SA-4.0 (data)",
+        "url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "evidence": "README 'License': code under Apache 2.0 (LICENSE.txt); data files 'may be redistributed under a Creative Commons Attribution-ShareAlike 4.0 license'. Upstream data: Google Books Ngrams ('freely used for any purpose'), Leeds Internet Corpus, Wikipedia and ParaCrawl (Creative Commons), OpenSubtitles 2018 (attribution to OpenSubtitles), SUBTLEX (e-mail permission from Marc Brysbaert 'for any purpose' provided the SUBTLEX authors are credited), Twitter statistics. The README also states that converting wordfreq to CSV 'does not follow the CC-By-SA license' because attribution is lost.",
+        "commercial_use": true,
+        "modification": true,
+        "redistribution": true,
+        "attribution_required": true,
+        "share_alike": true
+      },
+      "attribution": "Word frequencies from wordfreq 3.1.1 by Robyn Speer (https://github.com/rspeer/wordfreq, doi:10.5281/zenodo.7199437), data CC BY-SA 4.0, built from Wikipedia, OpenSubtitles 2018 (attribution to OpenSubtitles, http://www.opensubtitles.org/), SUBTLEX by Marc Brysbaert et al. (freely available data), NewsCrawl, GlobalVoices, Google Books Ngrams (http://books.google.com/ngrams), OSCAR, Twitter and Reddit.",
+      "distribution_note": "Approved for internal candidate analysis only. Outputs that contain wordfreq values are share-alike derived data and stay out of the repository; the author discourages CSV exports that drop attribution. Do not ship wordfreq values in app packs until this is resolved.",
+      "role": "Primary frequency signal: multi-genre (subtitles, web, news, Wikipedia, books), Zipf scale, a broader view of everyday use than books alone.",
+      "limitations": [
+        "Frozen at 2021; no newer vocabulary.",
+        "Case-folded tokens: no capitalisation information; tokenisation splits hyphens.",
+        "Blends sources including Google Books, so it is not independent of the Google list.",
+        "Values are frequencies, not difficulty or CEFR."
+      ],
+      "kind": "python-package",
+      "package": {
+        "name": "wordfreq",
+        "version": "3.1.1",
+        "requirements_file": "requirements-wordfreq.txt",
+        "data_file": "wordfreq/data/large_en.msgpack.gz",
+        "sha256": "dffae8066b78dce0a6667cf5f58e567054f902674667090a7ac8a8a44628b05c",
+        "bytes": 1494836
+      }
+    },
+    {
+      "id": "oewn-2025",
+      "name": "Open English WordNet 2025 edition (WN-LMF XML)",
+      "url": "https://github.com/globalwordnet/english-wordnet",
+      "publisher": "Open English WordNet team (Global WordNet Association), derived from Princeton WordNet",
+      "version": "2025-edition release (2025-12-31), english-wordnet-2025.xml.gz",
+      "accessed": "2026-11-21",
+      "status": "approved",
+      "distribution": "attribution",
+      "profiles": ["restricted", "redistributable"],
+      "licence": {
+        "id": "CC-BY-4.0",
+        "url": "https://creativecommons.org/licenses/by/4.0/",
+        "evidence": "Lexicon element of the release file: license=\"https://creativecommons.org/licenses/by/4.0\"; repository README: 'Open English WordNet is released under CC-BY 4.0'; LICENSE.md asks for attribution to both Princeton WordNet and the Open English WordNet team.",
+        "commercial_use": true,
+        "modification": true,
+        "redistribution": true,
+        "attribution_required": true,
+        "share_alike": false
+      },
+      "attribution": "Lexical data from Open English WordNet 2025 (https://github.com/globalwordnet/english-wordnet), Copyright (c) 2019-present The Open English WordNet Team, CC BY 4.0. This work is based on or incorporates elements of the Princeton University WordNet database; the original Princeton WordNet license terms apply to the underlying data (WNDB_License.txt in the Open English WordNet repository).",
+      "role": "Lexical reference: lemmas and parts of speech (nouns, verbs, adjectives, adverbs), explicit irregular forms, British/American spelling markers and lexicographer files.",
+      "limitations": [
+        "No function words (prepositions, pronouns, determiners, conjunctions).",
+        "No regular inflections: only irregular or exceptional forms are listed.",
+        "Includes proper nouns; sense distinctions are finer than a learner needs.",
+        "No frequency, register for learners or CEFR."
+      ],
+      "kind": "files",
+      "files": [
+        {
+          "name": "english-wordnet-2025.xml.gz",
+          "url": "https://github.com/globalwordnet/english-wordnet/releases/download/2025-edition/english-wordnet-2025.xml.gz",
+          "sha256": "9ca6d1dcb75f822fdd66617f7d9da48142ace38dd544d6ad5e2feca1674ad3fe",
+          "bytes": 11363503
+        }
+      ]
+    },
+    {
+      "id": "esdb-2026.02.25",
+      "name": "English Speller Database (ESDB, formerly SCOWLv2), release rel-2026.02.25",
+      "url": "https://github.com/en-wl/wordlist",
+      "publisher": "Kevin Atkinson",
+      "version": "tag rel-2026.02.25, commit 7e99edab8e32f9f9ea2b15f249ca8d4d67237410 (2026-02-25). The project was renamed ESDB after this tag (v2 branch 1e5b7d3a72f47a71da5d28686c1dd4b397178485); the renamed Copyright file differs only in the name.",
+      "accessed": "2026-11-21",
+      "status": "approved_internal",
+      "distribution": "restricted",
+      "profiles": ["restricted"],
+      "licence": {
+        "id": "ESDB/SCOWL permission notice with conditional notices (UKACD, Australian data, WordNet 1.6)",
+        "url": "https://github.com/en-wl/wordlist/blob/rel-2026.02.25/Copyright",
+        "evidence": "Copyright file: 'Permission to use, copy, modify, distribute, and sell any part of SCOWLv2, or word lists created from it, is hereby granted without fee, provided that the above copyright notice appears in all copies...'. It adds: 'If you are distributing the SCOWLv2 database or results from the SCOWL database that is not a speller dictionary or generated word list, then both copyrights may apply depending on the parts you use. In addition, the WordNet copyright MIGHT apply as WordNet was one of many sources used for the initial POS assignment.' Some data came from COCA 3-gram data used under an NDA the author says his use respects.",
+        "commercial_use": null,
+        "modification": true,
+        "redistribution": null,
+        "attribution_required": true,
+        "share_alike": false
+      },
+      "attribution": "Morphological, part-of-speech and spelling-variant evidence from the English Speller Database (ESDB, formerly SCOWLv2), release rel-2026.02.25 (https://github.com/en-wl/wordlist), Copyright 2000-2026 by Kevin Atkinson; conditional notices (UKACD by J Ross Beresford, Australian data by Benjamin Titze, Princeton WordNet 1.6) may apply as stated in its Copyright file.",
+      "distribution_note": "Local analysis only. Lemma relationships, inflection mappings and part-of-speech information are 'results from the database that is not a speller dictionary or generated word list', for which the Copyright file says the UKACD and Australian notices may apply depending on the parts used, and the WordNet licence might apply to POS. Which notices attach to which records is not documented, and COCA-derived data is covered by an NDA. Until that is clarified with the author, ESDB-derived fields (lemma_analyses relations esdb_*, ESDB parts of speech, ESDB-based folding and variant links) stay in restricted outputs.",
+      "role": "Morphological evidence: explicit inflected forms with form type, parts of speech for function words, US/GB/CA/AU spelling variants.",
+      "limitations": [
+        "Spell-checker oriented: lemma/inflection links are listed for spelling, not meaning; sense notes are rare.",
+        "Some parts of speech are uncertain by design (codes m and a).",
+        "Size and variant-level information is used only to recognise minor (archaic, uncommon, no longer used) readings, never to rank.",
+        "26 upstream warnings during the build (compounds-auto groups skipped)."
+      ],
+      "kind": "built-database",
+      "build": {
+        "repository": "https://github.com/en-wl/wordlist.git",
+        "tag": "rel-2026.02.25",
+        "commit": "7e99edab8e32f9f9ea2b15f249ca8d4d67237410",
+        "command": "python -I -X utf8 combine.py create-db scowl.db",
+        "environment": "a fresh folder holding copies of combine.py, libscowl/ and data/ only; env -i PATH SYSTEMROOT (no other variables); Python UTF-8 mode because the build opens files with the platform default encoding",
+        "tools": {"python": "3.11.9", "sqlite": "3.45.1"},
+        "libscowl_tree_sha256": "8ffcf41973685b2f40dde2f2c6d241c624f3d40c24edff64f9cab8ff7a55dc64",
+        "inputs": [
+          {"path": "combine.py", "sha256": "10609bbb888cbf4ae6c4e07658641c830ff1b9c9a98f9ca51f3057bac18cf07a"},
+          {"path": "Copyright", "sha256": "090575a131b4260926c7a6b30a90aca0f5db5fbb5c46778e0c5855227bf6ebc3"},
+          {"path": "Makefile", "sha256": "d2269be9d92654800db3ee7f0b302449a58c92117a082a69ff04de46ee1bb83f"},
+          {"path": "data/basic", "sha256": "cc145cb68bdffcf51c3c5696e6598f06e5728d57b5b1e647f85354a6803c0ed2"},
+          {"path": "data/coca", "sha256": "f03e766ed6b82be6af5e5ae266907400ae34caa2776cede632f24faceebf3e98"},
+          {"path": "data/coca_llm", "sha256": "6b24328f43a2afc36ba50ed4541debf86a79dc7ea2659ffb4ce098522584fe63"},
+          {"path": "data/compounds", "sha256": "b288c965ca02bbd38be855d43ab7fbceb6b1d57b5b951ac23e979defbcf355b9"},
+          {"path": "data/compounds-auto", "sha256": "6bdd5066a62aa1fb5e0276fa2d01347f88da54fb47a8029dabe3f2fdcd62ffe6"},
+          {"path": "data/exclude", "sha256": "516c603b40d6116d1266701a975e0d40c85c219e7ae8b8cda33dbe004f611bc8"},
+          {"path": "data/extra", "sha256": "6724d75dd64bb99847e7e588a97d99830e20930b956d51dcd102361d7f590b78"},
+          {"path": "data/fixes", "sha256": "5917ac86fc1dbf5ce33c71600060688e810723a0704e2c4602562b723831a3a4"},
+          {"path": "data/scowl-pre.txt", "sha256": "c4f5cfaabce46bc6fe151c2aa29b121425aa045a14166ed6daaffe2cc872f0f3"},
+          {"path": "data/signature", "sha256": "1df0c11e0134c8a1db9d338d130bb49779eed3cb1f0c5a7af444dd656b50caac"},
+          {"path": "data/variants", "sha256": "03a038839c12b3e31b8fa76fa99c8057d36abeaebb3035a03e5b5d02ea327f26"}
+        ]
+      },
+      "database": {
+        "name": "scowl.db",
+        "content_sha256": "8ad371ed818be18f7000a375ddefa457027c6989c9b3ab1f1486d7143a7da27e",
+        "note": "Two independent builds gave different file bytes (SQLite page layout) and identical content; the content checksum is the sha256 of the database's SQL dump."
+      }
+    },
+    {
+      "id": "cefr-j-octanove",
+      "name": "CEFR-J Wordlist 1.5 and Octanove Vocabulary Profile C1/C2 1.0",
+      "url": "https://github.com/openlanguageprofiles/olp-en-cefrj",
+      "publisher": "Tono Laboratory, Tokyo University of Foreign Studies; Octanove Labs",
+      "version": "commit d4e45b75b38f27b30dfc5c44d8c571aec7e7092f",
+      "accessed": "2026-11-21",
+      "status": "deferred",
+      "distribution": "not_used",
+      "licence": {
+        "id": "CEFR-J custom terms (free for research and commercial use with citation); Octanove CC-BY-SA-4.0",
+        "url": "https://github.com/openlanguageprofiles/olp-en-cefrj#terms-of-use",
+        "evidence": "README 'Terms of use'. Redistribution of CEFR-J levels inside other datasets is not addressed explicitly.",
+        "commercial_use": true,
+        "modification": null,
+        "redistribution": null,
+        "attribution_required": true,
+        "share_alike": null
+      },
+      "attribution": null,
+      "role": "Future CEFR metadata (listed levels with source).",
+      "deferred_reason": "CEFR assignment is out of scope for this milestone; CEFR-J redistribution scope needs confirmation from the publisher.",
+      "limitations": [],
+      "kind": "none",
+      "files": []
+    },
+    {
+      "id": "subtlex-us",
+      "name": "SUBTLEX-US",
+      "url": "https://www.ugent.be/pp/experimentele-psychologie/en/research/documents/subtlexus/overview.htm",
+      "publisher": "Marc Brysbaert, Boris New et al.",
+      "version": null,
+      "accessed": "2026-11-21",
+      "status": "rejected",
+      "distribution": "not_used",
+      "licence": {
+        "id": "unclear",
+        "url": null,
+        "evidence": "The official page states no licence; a third-party mirror reports CC BY-NC-ND 3.0 (not verifiable). wordfreq distributes SUBTLEX data under an e-mail permission.",
+        "commercial_use": null,
+        "modification": null,
+        "redistribution": null,
+        "attribution_required": true,
+        "share_alike": null
+      },
+      "attribution": null,
+      "role": "Spoken-language frequency; already included inside wordfreq.",
+      "deferred_reason": "Not used directly: licence for direct use and redistribution is not established. Its signal reaches the pipeline only through wordfreq.",
+      "limitations": [],
+      "kind": "none",
+      "files": []
+    },
+    {
+      "id": "wiktionary-kaikki",
+      "name": "English Wiktionary via Kaikki (wiktextract)",
+      "url": "https://kaikki.org/",
+      "publisher": "Wiktionary contributors; extraction by Tatu Ylonen",
+      "version": null,
+      "accessed": "2026-11-21",
+      "status": "deferred",
+      "distribution": "not_used",
+      "licence": {
+        "id": "CC-BY-SA-4.0 and GFDL (Wiktionary)",
+        "url": "https://en.wiktionary.org/wiki/Wiktionary:Copyrights",
+        "evidence": "Wiktionary is dual-licensed CC BY-SA 4.0 / GFDL; Kaikki states no separate licence for the extracted data.",
+        "commercial_use": true,
+        "modification": true,
+        "redistribution": true,
+        "attribution_required": true,
+        "share_alike": true
+      },
+      "attribution": null,
+      "role": "Future: inflection tables, form-of relations, usage labels (obsolete, archaic) and translation hints.",
+      "deferred_reason": "Multi-gigabyte dump and share-alike content; not needed to generate candidates. Evaluate for the enrichment pilot.",
+      "limitations": [],
+      "kind": "none",
+      "files": []
+    }
+  ]
+}

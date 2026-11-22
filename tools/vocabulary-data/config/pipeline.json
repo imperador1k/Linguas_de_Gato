@@ -1,0 +1,58 @@
+{
+  "format": "vocabulary-data-config",
+  "version": 1,
+  "profile": "restricted",
+  "description": "Profile A: restricted local analysis (wordfreq, Google Books lists, Open English WordNet, ESDB). Every output is restricted and stays in output/restricted/.",
+  "language": "en",
+  "raw_dir": "raw",
+  "sources": {
+    "google-books-top-wordlists": {
+      "enabled": true,
+      "lower_file": "top_english_words_lower_100000.txt",
+      "mixed_file": "top_english_words_mixed_100000.txt",
+      "pool_top_n": 60000
+    },
+    "wordfreq": {
+      "enabled": true,
+      "wordlist": "large",
+      "pool_top_n": 60000
+    },
+    "oewn-2025": {
+      "enabled": true,
+      "file": "english-wordnet-2025.xml.gz"
+    },
+    "esdb-2026.02.25": {
+      "enabled": true
+    }
+  },
+  "ranking": {
+    "method": "primary",
+    "primary_source": "wordfreq",
+    "secondary_source": "google-books-top-wordlists",
+    "disagreement_log10_threshold": 1.0
+  },
+  "flags": {
+    "proper_name_case_ratio": 10,
+    "acronym_case_ratio": 10,
+    "low_frequency_zipf": 2.5,
+    "keep_single_letters": ["a", "i"],
+    "proper_lexfiles_ordinary": ["noun.time", "noun.communication", "adj.pert", "adj.all"],
+    "foreign_function_words": ["de", "la", "le", "les", "des", "du", "et", "en", "der", "die", "das", "und", "von", "zur", "el", "los", "las", "il", "que", "por", "est", "sur", "dans", "une"],
+    "ocr_artefacts": ["tbe", "tlie", "tiie", "thc", "aud", "liave", "wliich", "whieh", "wbo", "sbe", "bnt", "niay", "ouly", "yourseif", "fuch", "moft", "thefe", "fome"],
+    "s_contraction_bases": ["it", "he", "she", "that", "there", "here", "what", "who", "where", "when", "why", "how", "let", "this"]
+  },
+  "exclusions": {
+    "contains_digit": true,
+    "initial": true,
+    "non_letter_symbol": true,
+    "single_letter": true,
+    "roman_numeral": true,
+    "ocr_artefact": true,
+    "clitic_fragment": true,
+    "possessive_form": true
+  },
+  "report": {
+    "sample_size": 15,
+    "rank_windows": [5000, 10000, 20000, 30000]
+  }
+}

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Synthetic test fixture in WN-LMF shape (not real Open English WordNet data). -->
+<LexicalResource>
+  <Lexicon id="test" label="Test lexicon" language="en" email="test@example.invalid" license="https://creativecommons.org/licenses/by/4.0" version="test">
+    <LexicalEntry id="t-child-n"><Lemma writtenForm="child" partOfSpeech="n"/><Form writtenForm="children"/><Sense id="s-child" synset="y-child"/></LexicalEntry>
+    <LexicalEntry id="t-go-v"><Lemma writtenForm="go" partOfSpeech="v"/><Form writtenForm="went"/><Sense id="s-go" synset="y-go"/></LexicalEntry>
+    <LexicalEntry id="t-find-v"><Lemma writtenForm="find" partOfSpeech="v"/><Form writtenForm="found"/><Sense id="s-find" synset="y-find"/></LexicalEntry>
+    <LexicalEntry id="t-found-v"><Lemma writtenForm="found" partOfSpeech="v"/><Sense id="s-found" synset="y-found"/></LexicalEntry>
+    <LexicalEntry id="t-book-n"><Lemma writtenForm="book" partOfSpeech="n"/><Sense id="s-book-n" synset="y-book-n"/></LexicalEntry>
+    <LexicalEntry id="t-book-v"><Lemma writtenForm="book" partOfSpeech="v"/><Sense id="s-book-v" synset="y-book-v"/></LexicalEntry>
+    <LexicalEntry id="t-colour-n"><Lemma writtenForm="colour" partOfSpeech="n"/>
+      <Sense id="s-colour" synset="y-colour"><SenseRelation relType="exemplifies" target="oewn-british_spelling__1.10.01.."/></Sense></LexicalEntry>
+    <LexicalEntry id="t-color-n"><Lemma writtenForm="color" partOfSpeech="n"/>
+      <Sense id="s-color" synset="y-colour"><SenseRelation relType="exemplifies" target="oewn-american_spelling__1.10.01.."/></Sense></LexicalEntry>
+    <LexicalEntry id="t-realise-v"><Lemma writtenForm="realise" partOfSpeech="v"/>
+      <Sense id="s-realise" synset="y-realize"><SenseRelation relType="exemplifies" target="oewn-british_spelling__1.10.01.."/></Sense></LexicalEntry>
+    <LexicalEntry id="t-realize-v"><Lemma writtenForm="realize" partOfSpeech="v"/>
+      <Sense id="s-realize" synset="y-realize"><SenseRelation relType="exemplifies" target="oewn-american_spelling__1.10.01.."/></Sense></LexicalEntry>
+    <LexicalEntry id="t-actualise-v"><Lemma writtenForm="actualise" partOfSpeech="v"/>
+      <Sense id="s-actualise" synset="y-realize"><SenseRelation relType="exemplifies" target="oewn-british_spelling__1.10.01.."/></Sense></LexicalEntry>
+    <LexicalEntry id="t-february-n"><Lemma writtenForm="February" partOfSpeech="n"/><Sense id="s-february" synset="y-february"/></LexicalEntry>
+    <LexicalEntry id="t-vietnamese-a"><Lemma writtenForm="Vietnamese" partOfSpeech="a"/><Sense id="s-vietnamese-a" synset="y-vietnamese-a"/></LexicalEntry>
+    <LexicalEntry id="t-vietnamese-n"><Lemma writtenForm="Vietnamese" partOfSpeech="n"/><Sense id="s-vietnamese-n" synset="y-vietnamese-n"/></LexicalEntry>
+    <LexicalEntry id="t-carter-n"><Lemma writtenForm="Carter" partOfSpeech="n"/><Sense id="s-carter" synset="y-carter"/></LexicalEntry>
+    <LexicalEntry id="t-march-v"><Lemma writtenForm="march" partOfSpeech="v"/><Sense id="s-march-v" synset="y-march-v"/></LexicalEntry>
+    <LexicalEntry id="t-march-n"><Lemma writtenForm="March" partOfSpeech="n"/><Sense id="s-march-n" synset="y-march-n"/></LexicalEntry>
+    <LexicalEntry id="t-cafe-n"><Lemma writtenForm="cafe" partOfSpeech="n"/><Sense id="s-cafe" synset="y-cafe"/></LexicalEntry>
+    <LexicalEntry id="t-run-v"><Lemma writtenForm="run" partOfSpeech="v"/><Form writtenForm="running"/><Sense id="s-run" synset="y-run"/></LexicalEntry>
+    <LexicalEntry id="t-running-n"><Lemma writtenForm="running" partOfSpeech="n"/><Sense id="s-running" synset="y-running"/></LexicalEntry>
+    <LexicalEntry id="t-oclock-r"><Lemma writtenForm="o'clock" partOfSpeech="r"/><Sense id="s-oclock" synset="y-oclock"/></LexicalEntry>
+    <LexicalEntry id="t-wellknown-a"><Lemma writtenForm="well-known" partOfSpeech="s"/><Sense id="s-wellknown" synset="y-wellknown"/></LexicalEntry>
+    <LexicalEntry id="t-dna-n"><Lemma writtenForm="DNA" partOfSpeech="n"/><Sense id="s-dna" synset="y-dna"/></LexicalEntry>
+    <LexicalEntry id="t-datum-n"><Lemma writtenForm="datum" partOfSpeech="n"/><Form writtenForm="data"/><Sense id="s-datum" synset="y-datum"/></LexicalEntry>
+    <LexicalEntry id="t-data-n"><Lemma writtenForm="data" partOfSpeech="n"/><Sense id="s-data" synset="y-data"/></LexicalEntry>
+    <LexicalEntry id="t-watch-n"><Lemma writtenForm="watch" partOfSpeech="n"/><Sense id="s-watch-n" synset="y-watch-n"/></LexicalEntry>
+    <LexicalEntry id="t-watch-v"><Lemma writtenForm="watch" partOfSpeech="v"/><Sense id="s-watch-v" synset="y-watch-v"/></LexicalEntry>
+    <LexicalEntry id="t-study-v"><Lemma writtenForm="study" partOfSpeech="v"/><Sense id="s-study-v" synset="y-study-v"/></LexicalEntry>
+    <LexicalEntry id="t-medium-n"><Lemma writtenForm="medium" partOfSpeech="n"/><Form writtenForm="media"/><Sense id="s-medium" synset="y-medium"/></LexicalEntry>
+    <LexicalEntry id="t-after-r"><Lemma writtenForm="after" partOfSpeech="r"/><Sense id="s-after" synset="y-after"/></LexicalEntry>
+    <LexicalEntry id="t-aft-a"><Lemma writtenForm="aft" partOfSpeech="a"/><Sense id="s-aft" synset="y-aft"/></LexicalEntry>
+    <LexicalEntry id="t-wend-v"><Lemma writtenForm="wend" partOfSpeech="v"/><Sense id="s-wend" synset="y-wend"/></LexicalEntry>
+    <LexicalEntry id="t-look-after-v"><Lemma writtenForm="look after" partOfSpeech="v"/><Sense id="s-lookafter" synset="y-lookafter"/></LexicalEntry>
+    <Synset id="y-child" partOfSpeech="n" lexfile="noun.person"/>
+    <Synset id="y-go" partOfSpeech="v" lexfile="verb.motion"/>
+    <Synset id="y-find" partOfSpeech="v" lexfile="verb.possession"/>
+    <Synset id="y-found" partOfSpeech="v" lexfile="verb.creation"/>
+    <Synset id="y-book-n" partOfSpeech="n" lexfile="noun.artifact"/>
+    <Synset id="y-book-v" partOfSpeech="v" lexfile="verb.social"/>
+    <Synset id="y-colour" partOfSpeech="n" lexfile="noun.attribute"/>
+    <Synset id="y-realize" partOfSpeech="v" lexfile="verb.cognition"/>
+    <Synset id="y-february" partOfSpeech="n" lexfile="noun.time"/>
+    <Synset id="y-vietnamese-a" partOfSpeech="a" lexfile="adj.pert"/>
+    <Synset id="y-vietnamese-n" partOfSpeech="n" lexfile="noun.person"/>
+    <Synset id="y-carter" partOfSpeech="n" lexfile="noun.person"/>
+    <Synset id="y-march-v" partOfSpeech="v" lexfile="verb.motion"/>
+    <Synset id="y-march-n" partOfSpeech="n" lexfile="noun.time"/>
+    <Synset id="y-cafe" partOfSpeech="n" lexfile="noun.artifact"/>
+    <Synset id="y-run" partOfSpeech="v" lexfile="verb.motion"/>
+    <Synset id="y-running" partOfSpeech="n" lexfile="noun.act"/>
+    <Synset id="y-oclock" partOfSpeech="r" lexfile="adv.all"/>
+    <Synset id="y-wellknown" partOfSpeech="s" lexfile="adj.all"/>
+    <Synset id="y-dna" partOfSpeech="n" lexfile="noun.substance"/>
+    <Synset id="y-datum" partOfSpeech="n" lexfile="noun.cognition"/>
+    <Synset id="y-data" partOfSpeech="n" lexfile="noun.cognition"/>
+    <Synset id="y-lookafter" partOfSpeech="v" lexfile="verb.social"/>
+    <Synset id="y-watch-n" partOfSpeech="n" lexfile="noun.artifact"/>
+    <Synset id="y-watch-v" partOfSpeech="v" lexfile="verb.perception"/>
+    <Synset id="y-study-v" partOfSpeech="v" lexfile="verb.cognition"/>
+    <Synset id="y-medium" partOfSpeech="n" lexfile="noun.communication"/>
+    <Synset id="y-after" partOfSpeech="r" lexfile="adv.all"/>
+    <Synset id="y-aft" partOfSpeech="a" lexfile="adj.all"/>
+    <Synset id="y-wend" partOfSpeech="v" lexfile="verb.motion"/>
+  </Lexicon>
+</LexicalResource>
