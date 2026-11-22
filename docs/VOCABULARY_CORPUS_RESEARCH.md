@@ -59,7 +59,9 @@ It is useful as **one written-frequency signal and a raw candidate pool**. It is
 
 ### 3.1 Format facts (verified for every file)
 
-- **Format:** plain text, UTF-8, one token per line, **CRLF** line endings, no header, **no frequency counts** (stripped by `4_strip_match_count.sh`).
+- **Format:** plain text, UTF-8, one token per line, **LF** line endings, no header, **no frequency counts** (stripped by `4_strip_match_count.sh`).
+
+> **Correction (21 November 2026, found while building the data pipeline).** The first version of this report said the files use CRLF line endings, and its byte sizes were measured on a Windows checkout made with `core.autocrlf=true`, which added a carriage return to every line. The files as published (`git cat-file`, raw downloads) use **LF**. Every byte size in the table below is therefore larger than the published file by exactly one byte per line: for example, `top_english_words_lower_100000.txt` is 854,114 bytes, not 954,114, and `top_english_words_mixed_100000.txt` is 839,408 bytes. Line counts, unique counts and every statistic about the words themselves are unaffected. The pipeline pins the published bytes by SHA-256 (`tools/vocabulary-data/sources/manifest.json`).
 - **Line counts:** every file has exactly its nominal number of lines.
 - **Clean lines:** no empty lines, no leading or trailing whitespace, no UTF-8 decoding errors.
 - **Duplicates:** no exact duplicates in any lower-case file.
@@ -69,7 +71,7 @@ It is useful as **one written-frequency signal and a raw candidate pool**. It is
 
 ### 3.2 Files
 
-Sizes are in bytes. "Unique, case-folded" is the number of distinct entries after Unicode case folding. Every file is plain text in frequency order, from Google Books Ngram English 20120701, with mixed (mostly American) spelling (§4).
+Sizes are in bytes **as measured on a CRLF checkout: subtract the line count for the published size** (see the correction above). "Unique, case-folded" is the number of distinct entries after Unicode case folding. Every file is plain text in frequency order, from Google Books Ngram English 20120701, with mixed (mostly American) spelling (§4).
 
 | File | Bytes (≈ MB) | Lines | Unique | Unique, case-folded | Category | Main limitations |
 | --- | ---: | ---: | ---: | ---: | --- | --- |
@@ -186,7 +188,7 @@ All figures refer to `top_english_words_lower_*` unless stated otherwise.
 
 **Safe to normalise automatically:**
 
-- CRLF line endings;
+- line endings (LF as published; CR if a checkout converted them);
 - Unicode NFC normalisation;
 - dropping tokens with digits, symbols or URLs;
 - dropping single letters other than "a" and "I";
@@ -559,7 +561,7 @@ Raw inputs live **outside** the app repository, in a cache, recorded by URL and 
 | --- | --- | --- | --- | --- |
 | 1 | Acquisition | Python stdlib (`urllib`, `gzip`) | ✅ | `manifest.json`: URL, revision or commit, SHA-256, size, date |
 | 2 | Licence and provenance | Hand-edited YAML/JSON, checked by a script | ✅ | `sources.json` (feeds pack `sources`) |
-| 3 | Parsing | Python | ✅ | Normalised token tables (CSV/JSONL), CRLF and NFC handled |
+| 3 | Parsing | Python | ✅ | Normalised token tables (CSV/JSONL), line endings and NFC handled |
 | 4 | Cleaning | Python, rules in config | ✅ | Tokens with reject reasons (digit, symbol, initials, OCR list, foreign list) |
 | 5 | Duplicate detection | Python | ✅ | Case, accent and punctuation groups; variant candidates |
 | 6 | Lemma and inflection analysis | Python + Wiktionary/Kaikki forms, Open English WordNet exceptions, AGID | ✅ | form → (lemma, part of speech); summed lemma frequency |
