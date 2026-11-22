@@ -25,6 +25,7 @@ from .fetch import SourceError, fetch_source, verify_source
 from .manifest import TOOL_ROOT, ManifestError, enabled_sources, load_config, load_register
 from .outputs import OutputError, compare_runs, portable_path, profile_root, validate_run, write_run
 from .pilot import write_pilot
+from .review import validate_review, write_review
 from .pipeline import run_pipeline
 
 DEFAULT_REGISTER = TOOL_ROOT / "sources" / "manifest.json"
@@ -106,6 +107,27 @@ def cmd_crosscheck_pilot(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_review_package(args: argparse.Namespace) -> int:
+    pilot_dir = _folder(args.pilot, "redistributable")
+    run_dir = _folder(args.run, "redistributable")
+    out_dir = _folder(args.out, "redistributable")
+    write_review(pilot_dir, run_dir, out_dir, Path(args.checklist), args.batches, replace=args.replace)
+    problems = validate_review(out_dir, pilot_dir)
+    print(f"Wrote {portable_path(out_dir)} (redistributable review package).")
+    for problem in problems:
+        print(f"  VALIDATION: {problem}")
+    return 1 if problems else 0
+
+
+def cmd_validate_review(args: argparse.Namespace) -> int:
+    problems = validate_review(_folder(args.package, "redistributable"), _folder(args.pilot, "redistributable"))
+    for problem in problems:
+        print(f"- {problem}")
+    if not problems:
+        print("Review package is complete: every pilot candidate exactly once (all and batches), traceable, review columns empty, no restricted traces.")
+    return 1 if problems else 0
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
     problems = validate_run(Path(args.run))
     if problems:
@@ -149,6 +171,18 @@ def build_parser() -> argparse.ArgumentParser:
     cross.add_argument("--run", required=True, help="Restricted run name or path.")
     cross.add_argument("--out", required=True, help="New folder name under output/restricted/.")
     cross.set_defaults(handler=cmd_crosscheck_pilot)
+    review = commands.add_parser("review-package", help="Build the human-review package for a redistributable pilot.")
+    review.add_argument("--pilot", required=True, help="Redistributable pilot folder name or path.")
+    review.add_argument("--run", required=True, help="The redistributable run the pilot was built from.")
+    review.add_argument("--out", required=True, help="New folder name under output/redistributable/.")
+    review.add_argument("--batches", type=int, default=8, help="Number of review batches (default 8).")
+    review.add_argument("--replace", action="store_true", help="Regenerate in place, only if the folder holds a review package of the same pilot and run.")
+    review.add_argument("--checklist", default=str(TOOL_ROOT / "config" / "function-word-checklist.json"), help="Function-word checklist for the coverage report.")
+    review.set_defaults(handler=cmd_review_package)
+    check_review = commands.add_parser("validate-review", help="Check a review package against its pilot.")
+    check_review.add_argument("package")
+    check_review.add_argument("--pilot", required=True)
+    check_review.set_defaults(handler=cmd_validate_review)
     validate = commands.add_parser("validate", help="Check a run folder for consistency and profile isolation.")
     validate.add_argument("run")
     validate.set_defaults(handler=cmd_validate)
