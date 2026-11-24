@@ -11,7 +11,8 @@ export const KIND_LABELS: Record<ExpressionKind, string> = {
 export const STATUS_LABELS = { new: 'New', learning: 'Learning', known: 'Known' } as const;
 
 export const PRACTICE_TYPE_LABELS: Record<StoredVocabularyQuestionType, { label: string; hint: string }> = {
-  spelling: { label: 'Spelling', hint: 'Write the English word for a Portuguese meaning' },
+  spelling: { label: 'Portuguese → English', hint: 'Write the English word for a Portuguese meaning' },
+  recognition: { label: 'English → Portuguese', hint: 'Write what an English word means in Portuguese' },
   context: { label: 'Context', hint: 'Complete a sentence with the missing word' },
   definition: { label: 'Definition', hint: 'Write the word an English definition describes' },
   gap_fill: { label: 'Fill in the blank', hint: 'Use the expression in a new sentence' },

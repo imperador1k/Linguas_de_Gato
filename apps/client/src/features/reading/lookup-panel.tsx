@@ -1,5 +1,7 @@
 import {
+  VOCABULARY_LIMITS,
   containsWords,
+  parseAnswerList,
   sentenceAround,
   vocabularyLookupResponseSchema,
   type ReadingTextRecord,
@@ -64,6 +66,8 @@ export function LookupPanel({
   const [saved, setSaved] = useState<{ outcome: SaveOutcome; entryId: string } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  // Typed by the learner, never filled in by the AI: it becomes an accepted answer.
+  const [translation, setTranslation] = useState('');
   const [queryError, setQueryError] = useState<string | null>(null);
   const id = useId();
   const current = selection.kind === 'valid' ? selection.selection : null;
@@ -90,11 +94,18 @@ export function LookupPanel({
   async function save() {
     if (!result || !vocabulary) return;
     try {
-      const { entry, outcome } = await saveToCollection(vocabulary.repository, result.response.lookup, {
-        sentence: result.sentence,
-        source: { kind: 'reading', textId: text.id, title: text.title, paragraphIndex: result.selection.paragraphIndex },
-      });
+      const { entry, outcome } = await saveToCollection(
+        vocabulary.repository,
+        result.response.lookup,
+        {
+          sentence: result.sentence,
+          source: { kind: 'reading', textId: text.id, title: text.title, paragraphIndex: result.selection.paragraphIndex },
+        },
+        Date.now(),
+        parseAnswerList(translation, VOCABULARY_LIMITS.maxTranslations),
+      );
       setSaved({ outcome, entryId: entry.id });
+      setTranslation('');
     } catch (caught) {
       setSaveError(describeStorageFailure(caught));
     }
@@ -181,20 +192,40 @@ export function LookupPanel({
             {lookup.lemma.toLowerCase() !== lookup.expression.toLowerCase() ? <p className="mt-0.5 text-sm text-muted-foreground">Dictionary form: {lookup.lemma}</p> : null}
           </div>
           <LookupDetail lookup={lookup} context={result.sentence} />
-          <div className="flex flex-wrap items-center gap-3 border-t pt-4">
+          <div className="flex flex-col gap-3 border-t pt-4">
             {saved ? (
-              <p role="status" className="inline-flex items-center gap-2 text-sm">
+              <p role="status" className="inline-flex flex-wrap items-center gap-2 text-sm">
                 <CircleCheck aria-hidden="true" className="size-4 text-success" />
                 {OUTCOME_MESSAGES[saved.outcome]}{' '}
                 <Link to={`/vocabulary/entries/${saved.entryId}`} className="font-medium underline-offset-4 hover:underline">
-                  Open
+                  {saved.outcome === 'already_saved' ? 'Open to edit' : 'Open'}
                 </Link>
               </p>
             ) : (
-              <Button onClick={() => void save()} disabled={!vocabulary}>
-                <BookmarkPlus aria-hidden="true" />
-                Save to my vocabulary
-              </Button>
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor={`${id}-translation`} className="text-sm font-medium">
+                    Portuguese meaning (optional)
+                  </label>
+                  <Input
+                    id={`${id}-translation`}
+                    value={translation}
+                    maxLength={300}
+                    lang="pt-PT"
+                    autoComplete="off"
+                    placeholder="e.g. reservar"
+                    aria-describedby={`${id}-translation-hint`}
+                    onChange={(event) => setTranslation(event.target.value)}
+                  />
+                  <p id={`${id}-translation-hint`} className="text-xs text-muted-foreground">
+                    Your own translation of this meaning; separate alternatives with commas. With it, the word can be practised in both directions.
+                  </p>
+                </div>
+                <Button className="self-start" onClick={() => void save()} disabled={!vocabulary}>
+                  <BookmarkPlus aria-hidden="true" />
+                  Save to my vocabulary
+                </Button>
+              </>
             )}
           </div>
           {saveError ? (

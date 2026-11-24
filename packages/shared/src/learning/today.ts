@@ -47,12 +47,12 @@ function mediaOf(session: { readonly id: string; readonly source: { readonly kin
   return { media: session.source.mediaStored ? 'audio-saved' : 'needs-file', sessionId: session.id };
 }
 
-const TRAINER_MODE_LABELS: Record<string, string> = { spelling: 'Spelling', context: 'Context', definition: 'Definition' };
+const TRAINER_MODE_LABELS: Record<string, string> = { spelling: 'Portuguese → English', recognition: 'English → Portuguese', context: 'Context', definition: 'Definition' };
 
 /** Title and link of a vocabulary practice set: AI practice, or a local trainer round. */
 function practiceSetLink(set: { readonly id: string; readonly model: string; readonly types: readonly string[]; readonly entryIds: readonly string[]; readonly questions: readonly unknown[] }): { title: string; path: string } {
   if (set.model === 'local') {
-    const mode = TRAINER_MODE_LABELS[set.types[0] ?? ''] ?? 'Vocabulary';
+    const mode = set.types.length > 1 ? 'Mixed' : (TRAINER_MODE_LABELS[set.types[0] ?? ''] ?? 'Vocabulary');
     return { title: `${mode} round · ${set.questions.length} words`, path: `/vocabulary/train/${set.id}` };
   }
   return { title: `Practice on ${set.entryIds.length} expression${set.entryIds.length === 1 ? '' : 's'}`, path: `/vocabulary/practice/${set.id}` };

@@ -43,10 +43,14 @@ export type PartOfSpeech = (typeof PARTS_OF_SPEECH)[number];
 export const VOCABULARY_TOPICS = ['everyday', 'food', 'technology', 'travel', 'work', 'health', 'education', 'nature', 'home', 'emotions', 'money'] as const;
 export type VocabularyTopic = (typeof VOCABULARY_TOPICS)[number];
 
-/** Trainer modes. `audio` is reserved: no pack provides recordings yet and the trainer does not offer it. */
-export const TRAINER_MODES = ['spelling', 'context', 'definition', 'audio'] as const;
+/**
+ * Trainer modes. `spelling` is Portuguese → English recall and `recognition`
+ * English → Portuguese. `audio` is reserved: no pack provides recordings yet
+ * and the trainer does not offer it.
+ */
+export const TRAINER_MODES = ['spelling', 'recognition', 'context', 'definition', 'audio'] as const;
 export type TrainerMode = (typeof TRAINER_MODES)[number];
-export const AVAILABLE_TRAINER_MODES = ['spelling', 'context', 'definition'] as const satisfies readonly TrainerMode[];
+export const AVAILABLE_TRAINER_MODES = ['spelling', 'recognition', 'context', 'definition'] as const satisfies readonly TrainerMode[];
 export type AvailableTrainerMode = (typeof AVAILABLE_TRAINER_MODES)[number];
 
 const text = (max: number) => z.string().trim().min(1).max(max);

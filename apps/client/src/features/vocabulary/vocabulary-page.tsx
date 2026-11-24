@@ -1,22 +1,30 @@
 import {
   EXPRESSION_KINDS,
+  KNOWLEDGE_FILTERS,
   LOCAL_PRACTICE_MODEL,
   NO_PACK_FILTERS,
   VOCABULARY_LIMITS,
   VOCABULARY_QUESTION_TYPES,
   VOCABULARY_RECORD_VERSION,
   dueEntries,
+  entriesDueForPractice,
+  entryMatchesFilter,
+  knowledgeSummary,
+  nextFacetDueAt,
   scoreVocabularySet,
   seededShuffle,
   toPracticeItem,
+  translationsOf,
   type ExpressionKind,
+  type KnowledgeFilter,
   type PackFilters,
+  type TrainingFocus,
   type VocabularyEntry,
   type VocabularyPackSummary,
   type VocabularyPracticeSet,
   type VocabularyQuestionType,
 } from '@ldg/shared';
-import { ArrowRight, BookOpenText, Dumbbell, Library, LoaderCircle, Repeat, Sparkles, Trash } from 'lucide-react';
+import { ArrowRight, BookOpenText, Dumbbell, Eye, Library, LoaderCircle, Plus, Sparkles, Trash } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { PageHeader } from '@/components/layout/page-header';
@@ -35,10 +43,22 @@ import { describeStorageFailure } from '@/lib/storage/feature-storage';
 import { useElapsedSeconds } from '@/lib/use-elapsed-seconds';
 import { useGenerationJob } from '@/lib/use-generation-job';
 import { cn } from '@/lib/utils';
+import { FacetChips } from './knowledge-view';
 import { LibraryView } from './library/library-view';
+import { PersonalWordForm } from './personal-word-form';
 import { vocabularyStorage, type VocabularyRepository } from './storage/vocabulary-repository';
-import { TrainerSetup } from './trainer/trainer-setup';
-import { dateFormatter, describeDue, KIND_LABELS, PRACTICE_TYPE_LABELS, STATUS_LABELS } from './vocabulary-labels';
+import { migrateTrainerEvidence } from './trainer/trainer-service';
+import { TrainerSetup, type TrainerSource } from './trainer/trainer-setup';
+import { dateFormatter, describeDue, KIND_LABELS, PRACTICE_TYPE_LABELS } from './vocabulary-labels';
+
+const KNOWLEDGE_FILTER_LABELS: Record<KnowledgeFilter, string> = {
+  due: 'Due for practice',
+  difficult: 'Difficult',
+  untested: 'Not tested yet',
+  recognise_not_recall: 'Recognised, not yet recalled',
+  used_in_context: 'Used in context',
+  not_trainable: 'Needs a translation or example',
+};
 
 type View = 'collection' | 'library' | 'practice';
 
@@ -162,22 +182,69 @@ function PracticeGenerator({
   );
 }
 
-/** The review queue, always visible: the one daily task in this module that has a due date. */
-function ReviewStrip({ due, nextDueAt, now }: { due: number; nextDueAt: number | null; now: number }) {
+/**
+ * What is due, always visible. Practice due dates are per word, meaning and
+ * direction (tested answers); the self-rated meaning review keeps its own,
+ * simpler queue for the expressions the learner saved.
+ */
+function ReviewStrip({
+  practiceDue,
+  nextDueAt,
+  selfCheckDue,
+  summary,
+  now,
+  onPractise,
+}: {
+  practiceDue: number;
+  nextDueAt: number | null;
+  selfCheckDue: number;
+  summary: Record<KnowledgeFilter, number>;
+  now: number;
+  onPractise: (focus: TrainingFocus) => void;
+}) {
   return (
-    <section aria-label="Review queue" className="mb-8 flex flex-col gap-3 rounded-lg border bg-card px-4 py-4 sm:flex-row sm:items-center sm:gap-5 sm:px-5">
-      <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">Review queue</p>
-        <p className="mt-1.5 font-serif text-[1.1875rem] leading-snug">{due > 0 ? `${due} expression${due === 1 ? '' : 's'} due for review` : 'Nothing due for review'}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {due > 0 ? 'Recall each meaning from its sentence before revealing it.' : nextDueAt ? `${describeDue(nextDueAt, now)}.` : 'Expressions you save join the queue.'}
-        </p>
+    <section aria-label="Due for review" className="mb-8 flex flex-col gap-3 rounded-lg border bg-card px-4 py-4 sm:px-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-5">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">Due for practice</p>
+          <p className="mt-1.5 font-serif text-[1.1875rem] leading-snug">{practiceDue > 0 ? `${practiceDue} word${practiceDue === 1 ? '' : 's'} due` : 'Nothing due'}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {practiceDue > 0
+              ? 'Each in the direction that is due: English → Portuguese, Portuguese → English or in context.'
+              : nextDueAt
+                ? `Next: ${describeDue(nextDueAt, now).toLowerCase()}.`
+                : summary.untested > 0
+                  ? `${summary.untested} word${summary.untested === 1 ? ' has' : 's have'} not been tested yet.`
+                  : 'Words you train come back here when they are due.'}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {practiceDue > 0 ? (
+            <Button onClick={() => onPractise('due')}>
+              <Dumbbell aria-hidden="true" />
+              Practise {practiceDue} due
+            </Button>
+          ) : summary.untested > 0 ? (
+            <Button variant="secondary" onClick={() => onPractise('new')}>
+              <Dumbbell aria-hidden="true" />
+              Practise new words
+            </Button>
+          ) : null}
+          {summary.difficult > 0 ? (
+            <Button variant="secondary" onClick={() => onPractise('difficult')}>
+              Difficult ({summary.difficult})
+            </Button>
+          ) : null}
+        </div>
       </div>
-      {due > 0 ? (
-        <Link to="/vocabulary/review" className={cn(buttonVariants(), 'shrink-0 self-start sm:self-auto')}>
-          <Repeat aria-hidden="true" />
-          Review {due} due
-        </Link>
+      {selfCheckDue > 0 ? (
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t pt-3 text-sm text-muted-foreground">
+          <Eye aria-hidden="true" className="size-4" />
+          {selfCheckDue} saved expression{selfCheckDue === 1 ? ' is' : 's are'} due for a self-rated meaning check.
+          <Link to="/vocabulary/review" className="font-medium text-foreground underline-offset-4 hover:underline">
+            Check meanings
+          </Link>
+        </p>
       ) : null}
     </section>
   );
@@ -195,13 +262,21 @@ export function VocabularyPage() {
   const [params, setParams] = useSearchParams();
   const requestedView = params.get('view');
   const view: View = requestedView === 'practice' || requestedView === 'library' ? requestedView : 'collection';
-  const [trainer, setTrainer] = useState<{ open: boolean; key: number; pack: VocabularyPackSummary | null; filters: PackFilters }>({ open: false, key: 0, pack: null, filters: NO_PACK_FILTERS });
+  const [trainer, setTrainer] = useState<{ open: boolean; key: number; pack: VocabularyPackSummary | null; filters: PackFilters; source: TrainerSource; focus: TrainingFocus }>({
+    open: false,
+    key: 0,
+    pack: null,
+    filters: NO_PACK_FILTERS,
+    source: 'collection',
+    focus: 'mixed',
+  });
+  const [adding, setAdding] = useState({ open: false, key: 0, dirty: false });
   const [entries, setEntries] = useState<VocabularyEntry[] | null>(null);
   const [sets, setSets] = useState<VocabularyPracticeSet[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<ExpressionKind | 'all'>('all');
-  const [status, setStatus] = useState<'all' | 'due' | 'new' | 'learning' | 'known'>('all');
+  const [status, setStatus] = useState<KnowledgeFilter | 'all'>('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingSet, setPendingSet] = useState<VocabularyPracticeSet | null>(null);
   const [panel, setPanel] = useState({ open: false, key: 0 });
@@ -213,6 +288,8 @@ export function VocabularyPage() {
   const refresh = useCallback(async () => {
     if (!storage) return;
     try {
+      // Library words trained before per-direction evidence get it from their earlier rounds (once).
+      await migrateTrainerEvidence(storage.repository).catch((caught: unknown) => console.warn('Could not rebuild earlier trainer evidence.', caught));
       const [loadedEntries, loadedSets] = await Promise.all([storage.repository.entries.list(), storage.repository.practiceSets.list()]);
       setEntries(loadedEntries.sort((a, b) => b.createdAt - a.createdAt));
       setSets(loadedSets.sort((a, b) => b.updatedAt - a.updatedAt));
@@ -243,12 +320,19 @@ export function VocabularyPage() {
       { replace: true },
     );
   const setView = (next: View) => updateParams((result) => (next === 'collection' ? result.delete('view') : result.set('view', next)));
-  const openTrainer = useCallback((pack: VocabularyPackSummary | null = null, filters: PackFilters = NO_PACK_FILTERS) => setTrainer((current) => ({ open: true, key: current.key + 1, pack, filters })), []);
-  // "New round" from a finished round links here with ?train=1.
-  const trainParam = params.get('train') === '1';
+  const openTrainer = useCallback(
+    (options: { pack?: VocabularyPackSummary | null; filters?: PackFilters; source?: TrainerSource; focus?: TrainingFocus } = {}) =>
+      setTrainer((current) => ({ open: true, key: current.key + 1, pack: options.pack ?? null, filters: options.filters ?? NO_PACK_FILTERS, source: options.source ?? 'collection', focus: options.focus ?? 'mixed' })),
+    [],
+  );
+  // "New round" links here with ?train=1 (own words) or ?train=library; the due recommendation with ?train=due.
+  const trainValue = params.get('train');
+  const trainParam = trainValue === '1' || trainValue === 'due' || trainValue === 'library';
+  // The setup needs the collection, so it opens once entries are loaded (and not again on every refresh).
+  const loaded = entries !== null;
   useEffect(() => {
-    if (trainParam && storage) openTrainer();
-  }, [trainParam, storage, openTrainer]);
+    if (trainParam && storage && loaded) openTrainer(trainValue === 'library' ? { source: 'library' } : trainValue === 'due' ? { focus: 'due' } : {});
+  }, [trainParam, trainValue, storage, loaded, openTrainer]);
   const closeTrainer = () => {
     setTrainer((current) => ({ ...current, open: false }));
     if (trainParam) updateParams((result) => result.delete('train'));
@@ -259,19 +343,21 @@ export function VocabularyPage() {
     if (practiseParam) updateParams((result) => result.delete('practise'));
   };
 
-  const due = useMemo(() => (entries ? dueEntries(entries, now) : []), [entries, now]);
-  const nextDueAt = useMemo(() => {
-    const upcoming = (entries ?? []).map((entry) => entry.review.dueAt).filter((at) => at > now);
-    return upcoming.length > 0 ? Math.min(...upcoming) : null;
-  }, [entries, now]);
+  const selfCheckDue = useMemo(() => (entries ? dueEntries(entries, now) : []), [entries, now]);
+  const practiceDue = useMemo(() => (entries ? entriesDueForPractice(entries, now) : []), [entries, now]);
+  const nextDueAt = useMemo(() => (entries ? nextFacetDueAt(entries, now) : null), [entries, now]);
+  const summary = useMemo(() => knowledgeSummary(entries ?? [], now), [entries, now]);
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return (entries ?? []).filter((entry) => {
       if (kind !== 'all' && entry.kind !== kind) return false;
-      if (status === 'due' && entry.review.dueAt > now) return false;
-      if (status !== 'all' && status !== 'due' && entry.review.status !== status) return false;
+      if (status !== 'all' && !entryMatchesFilter(entry, status, now)) return false;
       if (!needle) return true;
-      return entry.expression.toLowerCase().includes(needle) || entry.lemma.toLowerCase().includes(needle) || entry.senses.some((sense) => sense.contextualMeaning.toLowerCase().includes(needle));
+      return (
+        entry.expression.toLowerCase().includes(needle) ||
+        entry.lemma.toLowerCase().includes(needle) ||
+        entry.senses.some((sense) => sense.contextualMeaning.toLowerCase().includes(needle) || translationsOf(sense).some((translation) => translation.toLowerCase().includes(needle)))
+      );
     });
   }, [entries, query, kind, status, now]);
   const filtered = query.trim() !== '' || kind !== 'all' || status !== 'all';
@@ -291,13 +377,17 @@ export function VocabularyPage() {
       <PageHeader
         eyebrow="Vocabulary"
         title="Your personal dictionary."
-        description="Expressions you met while reading or trained from the library, with the sentence they come from, what they mean and how they are used."
+        description="Words and expressions you met while reading or anywhere else, what they mean in Portuguese, and what you have shown you can do with each one."
         actions={
           storage ? (
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => openTrainer()}>
                 <Dumbbell aria-hidden="true" />
                 Train
+              </Button>
+              <Button variant="secondary" onClick={() => setAdding((current) => ({ open: true, key: current.key + 1, dirty: false }))}>
+                <Plus aria-hidden="true" />
+                Add word
               </Button>
               {hasEntries ? (
                 <Button variant="secondary" onClick={openPanel}>
@@ -316,7 +406,7 @@ export function VocabularyPage() {
         </Notice>
       ) : null}
 
-      {hasEntries ? <ReviewStrip due={due.length} nextDueAt={nextDueAt} now={now} /> : null}
+      {hasEntries ? <ReviewStrip practiceDue={practiceDue.length} nextDueAt={nextDueAt} selfCheckDue={selfCheckDue.length} summary={summary} now={now} onPractise={(focus) => openTrainer({ focus })} /> : null}
 
       {entries === null ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -338,24 +428,28 @@ export function VocabularyPage() {
           />
           <div {...tabPanelProps(idBase, view)} className="flex flex-col gap-4">
             {view === 'library' ? (
-              <LibraryView collection={entries} onTrain={(pack, filters) => openTrainer(pack, filters)} />
+              <LibraryView collection={entries} onTrain={(pack, filters) => openTrainer({ pack, filters, source: 'library' })} />
             ) : view === 'collection' && entries.length === 0 ? (
               <EmptyState
                 title="Nothing saved yet."
                 action={
                   <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => setView('library')}>
-                      <Library aria-hidden="true" />
-                      Browse the library
+                    <Button size="sm" onClick={() => setAdding((current) => ({ open: true, key: current.key + 1, dirty: false }))}>
+                      <Plus aria-hidden="true" />
+                      Add a word
                     </Button>
                     <Link to="/reading" className={buttonVariants({ variant: 'secondary', size: 'sm' })}>
                       <BookOpenText aria-hidden="true" />
                       Go to Reading
                     </Link>
+                    <Button size="sm" variant="ghost" onClick={() => setView('library')}>
+                      <Library aria-hidden="true" />
+                      Browse the library
+                    </Button>
                   </div>
                 }
               >
-                Train words from the library, or open a text in Reading, select an expression, look it up and save it. Either way it joins your collection and the review queue.
+                Add a word you met anywhere with its Portuguese meaning, or select an expression in a Reading text, look it up and save it. Then train it in both directions and in context.
               </EmptyState>
             ) : view === 'collection' ? (
               <>
@@ -370,12 +464,13 @@ export function VocabularyPage() {
                       </option>
                     ))}
                   </select>
-                  <select aria-label="Review status" value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className={cn(FILTER_CONTROL, 'min-w-0 sm:flex-[0_1_9rem]')}>
-                    <option value="all">Any status</option>
-                    <option value="due">Due now</option>
-                    <option value="new">New</option>
-                    <option value="learning">Learning</option>
-                    <option value="known">Known</option>
+                  <select aria-label="What you have shown" value={status} onChange={(event) => setStatus(event.target.value as typeof status)} className={cn(FILTER_CONTROL, 'col-span-2 min-w-0 sm:col-span-1 sm:flex-[0_1_15rem]')}>
+                    <option value="all">Any progress</option>
+                    {KNOWLEDGE_FILTERS.map((value) => (
+                      <option key={value} value={value}>
+                        {KNOWLEDGE_FILTER_LABELS[value]} ({summary[value]})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 ) : null}
@@ -413,7 +508,7 @@ export function VocabularyPage() {
                 ) : (
                   <ul className="divide-y rounded-lg border bg-card" aria-label="Saved expressions">
                     {visible.map((entry) => {
-                      const sense = entry.senses[0];
+                      const library = entry.senses.every((sense) => sense.source.kind === 'library');
                       return (
                         <li key={entry.id} className="flex items-start gap-3 px-3 py-2.5 sm:px-4">
                           <input
@@ -428,15 +523,22 @@ export function VocabularyPage() {
                               <span className="font-serif text-[1.125rem] group-hover:underline">{entry.expression}</span>
                               <span className="text-xs text-muted-foreground">{KIND_LABELS[entry.kind]}</span>
                               {entry.senses.length > 1 ? <Badge variant="neutral" className="px-1.5 py-0">{entry.senses.length} meanings</Badge> : null}
+                              {library ? <span className="text-xs text-muted-foreground">· from the library</span> : null}
                             </span>
-                            <span className="mt-0.5 line-clamp-2 block text-sm text-muted-foreground">{sense?.contextualMeaning}</span>
-                            <span className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-                              <span>{STATUS_LABELS[entry.review.status]}</span>
-                              <span aria-hidden="true">·</span>
-                              <span className={entry.review.dueAt <= now ? 'font-medium text-foreground' : undefined}>{describeDue(entry.review.dueAt, now)}</span>
-                              <span aria-hidden="true">·</span>
-                              <span>added {dateFormatter.format(entry.createdAt)}</span>
-                            </span>
+                            {/* Each meaning has its own progress: "book" the noun and the verb are learned separately. */}
+                            {entry.senses.map((sense) => {
+                              const translations = translationsOf(sense);
+                              return (
+                                <div key={sense.id} className="mt-1.5 flex flex-col gap-1">
+                                  <span className="line-clamp-2 block text-sm text-muted-foreground">
+                                    {sense.partOfSpeech ? <span className="mr-1.5 text-xs">{sense.partOfSpeech}</span> : null}
+                                    <span lang={translations.length ? 'pt-PT' : 'en'}>{translations.length ? translations.join(', ') : sense.contextualMeaning}</span>
+                                  </span>
+                                  <FacetChips entry={entry} sense={sense} now={now} />
+                                </div>
+                              );
+                            })}
+                            <span className="mt-1.5 block text-xs text-muted-foreground">added {dateFormatter.format(entry.createdAt)}</span>
                           </Link>
                         </li>
                       );
@@ -476,7 +578,9 @@ export function VocabularyPage() {
                       <Link to={local ? `/vocabulary/train/${set.id}` : `/vocabulary/practice/${set.id}`} className="group min-w-0 flex-1 rounded-md py-1.5">
                         <span className="flex items-center gap-2">
                           <span className="font-medium group-hover:underline">
-                            {local ? `${PRACTICE_TYPE_LABELS[set.types[0] ?? 'spelling'].label} round · ${set.questions.length} words` : `${set.questions.length} questions · ${set.entryIds.length} expressions`}
+                            {local
+                              ? `${set.types.length > 1 ? 'Mixed' : PRACTICE_TYPE_LABELS[set.types[0] ?? 'spelling'].label} round · ${set.questions.length} words`
+                              : `${set.questions.length} questions · ${set.entryIds.length} expressions`}
                           </span>
                           <Badge variant={local ? 'outline' : 'neutral'} className="px-2 py-0">
                             {local ? 'Trainer' : 'AI'}
@@ -514,8 +618,29 @@ export function VocabularyPage() {
       ) : null}
 
       {storage && entries ? (
-        <SidePanel key={`trainer-${trainer.key}`} open={trainer.open} onClose={closeTrainer} title="Train" description="Practise words from the library in your browser: spelling, context or definitions.">
-          {trainer.open ? <TrainerSetup repository={storage.repository} collection={entries} pack={trainer.pack} filters={trainer.filters} /> : null}
+        <SidePanel key={`trainer-${trainer.key}`} open={trainer.open} onClose={closeTrainer} title="Train" description="Practise your own words, or the library's, in your browser: in both directions and in context.">
+          {trainer.open ? <TrainerSetup repository={storage.repository} collection={entries} pack={trainer.pack} filters={trainer.filters} source={trainer.source} focus={trainer.focus} /> : null}
+        </SidePanel>
+      ) : null}
+
+      {storage && entries ? (
+        <SidePanel
+          key={`add-${adding.key}`}
+          open={adding.open}
+          onClose={() => setAdding((current) => ({ ...current, open: false, dirty: false }))}
+          dirty={adding.dirty}
+          title="Add a word"
+          description="A word or expression you met anywhere, with what it means in Portuguese. Different meanings of the same word are kept apart."
+        >
+          {adding.open ? (
+            <PersonalWordForm
+              repository={storage.repository}
+              entries={entries}
+              target={{ kind: 'add' }}
+              onSaved={() => void refresh()}
+              onDirtyChange={(dirty) => setAdding((current) => (current.dirty === dirty ? current : { ...current, dirty }))}
+            />
+          ) : null}
         </SidePanel>
       ) : null}
 

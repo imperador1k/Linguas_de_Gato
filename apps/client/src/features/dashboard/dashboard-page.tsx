@@ -1,4 +1,4 @@
-import { computeMetrics, dueEntries, rangeFor, todayWork, type LearningModule as ModuleId, type Recommendation, type WorkItem, type WorkStatus } from '@ldg/shared';
+import { computeMetrics, dueEntries, entriesDueForPractice, nextFacetDueAt, rangeFor, todayWork, type LearningModule as ModuleId, type Recommendation, type WorkItem, type WorkStatus } from '@ldg/shared';
 import { ArrowRight, CircleCheck, RotateCcw } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Link } from 'react-router';
@@ -177,29 +177,67 @@ function RecommendedSection({ recommendations }: { recommendations: readonly Rec
   );
 }
 
-function ReviewsSection({ due, nextDueAt, total, now }: { due: ReadonlyArray<{ id: string; expression: string }>; nextDueAt: number | null; total: number; now: number }) {
+function DueList({ items, label }: { items: ReadonlyArray<{ id: string; expression: string }>; label: string }) {
+  return (
+    <ul className="flex flex-wrap gap-1.5" aria-label={label}>
+      {items.slice(0, 5).map((entry) => (
+        <li key={entry.id} className="rounded-md bg-muted px-2 py-0.5 font-serif text-[0.9375rem]">
+          {entry.expression}
+        </li>
+      ))}
+      {items.length > 5 ? <li className="px-1 py-0.5 text-sm text-muted-foreground">+{items.length - 5} more</li> : null}
+    </ul>
+  );
+}
+
+/**
+ * Two queues: words due in the trainer (tested, per meaning and direction)
+ * and saved expressions due for the self-rated meaning check.
+ */
+function ReviewsSection({
+  due,
+  practiceDue,
+  nextDueAt,
+  total,
+  now,
+}: {
+  due: ReadonlyArray<{ id: string; expression: string }>;
+  practiceDue: ReadonlyArray<{ id: string; expression: string }>;
+  nextDueAt: number | null;
+  total: number;
+  now: number;
+}) {
   return (
     <section aria-labelledby="today-reviews">
       <SectionHeading id="today-reviews">Vocabulary reviews</SectionHeading>
       <div className="flex flex-col gap-3 rounded-lg border bg-card px-4 py-4">
-        {due.length > 0 ? (
+        {practiceDue.length > 0 || due.length > 0 ? (
           <>
-            <p>
-              <span className="text-2xl font-medium tabular-nums">{due.length}</span>{' '}
-              <span className="text-sm text-muted-foreground">{due.length === 1 ? 'expression is due' : 'expressions are due'}</span>
-            </p>
-            <ul className="flex flex-wrap gap-1.5" aria-label="Due expressions">
-              {due.slice(0, 5).map((entry) => (
-                <li key={entry.id} className="rounded-md bg-muted px-2 py-0.5 font-serif text-[0.9375rem]">
-                  {entry.expression}
-                </li>
-              ))}
-              {due.length > 5 ? <li className="px-1 py-0.5 text-sm text-muted-foreground">+{due.length - 5} more</li> : null}
-            </ul>
-            <Link to="/vocabulary/review" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
-              <RotateCcw aria-hidden="true" />
-              Review now
-            </Link>
+            {practiceDue.length > 0 ? (
+              <>
+                <p>
+                  <span className="text-2xl font-medium tabular-nums">{practiceDue.length}</span>{' '}
+                  <span className="text-sm text-muted-foreground">{practiceDue.length === 1 ? 'word is due for practice' : 'words are due for practice'}</span>
+                </p>
+                <DueList items={practiceDue} label="Words due for practice" />
+                <Link to="/vocabulary?train=due" className={cn(buttonVariants({ size: 'sm' }), 'self-start')}>
+                  <RotateCcw aria-hidden="true" />
+                  Practise now
+                </Link>
+              </>
+            ) : null}
+            {due.length > 0 ? (
+              <div className={cn('flex flex-col gap-3', practiceDue.length > 0 && 'border-t pt-3')}>
+                <p>
+                  <span className={cn('font-medium tabular-nums', practiceDue.length > 0 ? 'text-lg' : 'text-2xl')}>{due.length}</span>{' '}
+                  <span className="text-sm text-muted-foreground">{due.length === 1 ? 'expression is due for a meaning check' : 'expressions are due for a meaning check'}</span>
+                </p>
+                <DueList items={due} label="Expressions due for a meaning check" />
+                <Link to="/vocabulary/review" className={cn(buttonVariants({ size: 'sm', variant: practiceDue.length > 0 ? 'secondary' : 'primary' }), 'self-start')}>
+                  Check meanings
+                </Link>
+              </div>
+            ) : null}
           </>
         ) : total > 0 ? (
           <p className="flex gap-2 text-sm leading-relaxed text-muted-foreground">
@@ -353,16 +391,22 @@ export function DashboardPage() {
     const now = derived.now;
     const work = todayWork({ ...snapshot, writingDrafts, writingTasks }, now);
     const due = dueEntries([...snapshot.vocabularyEntries], now);
-    const upcoming = snapshot.vocabularyEntries.map((entry) => entry.review.dueAt).filter((at) => at > now);
+    const practiceDue = entriesDueForPractice(snapshot.vocabularyEntries, now);
+    // The self-check queue only holds saved expressions; trainer words have their own dates.
+    const upcoming = [
+      ...snapshot.vocabularyEntries.filter((entry) => entry.senses.some((sense) => sense.source.kind !== 'library')).map((entry) => entry.review.dueAt),
+      nextFacetDueAt(snapshot.vocabularyEntries, now) ?? Number.POSITIVE_INFINITY,
+    ].filter((at) => at > now && Number.isFinite(at));
     return {
       now,
       work,
       week: computeMetrics(snapshot, rangeFor('7d', now)),
       // Due reviews have their own section, so they are not repeated as a recommendation.
       recommendations: derived.recommendations.active
-        .filter((recommendation) => recommendation.category !== null && !(recommendation.action.type === 'open' && recommendation.action.path === '/vocabulary/review'))
+        .filter((recommendation) => recommendation.category !== null && !(recommendation.action.type === 'open' && (recommendation.action.path === '/vocabulary/review' || recommendation.action.path === '/vocabulary?train=due')))
         .slice(0, 3),
       due: due.map((entry) => ({ id: entry.id, expression: entry.expression })),
+      practiceDue: practiceDue.map((entry) => ({ id: entry.id, expression: entry.expression })),
       nextDueAt: upcoming.length > 0 ? Math.min(...upcoming) : null,
       vocabularyTotal: snapshot.vocabularyEntries.length,
       empty: work.continueItems.length === 0 && work.activity.length === 0 && snapshot.vocabularyEntries.length === 0,
@@ -373,7 +417,7 @@ export function DashboardPage() {
   let description = 'What to continue, what to review and what to practise next, from the work saved in this browser.';
   if (today && !today.empty) {
     const parts = [
-      today.due.length > 0 ? plural(today.due.length, 'review is due', 'reviews are due') : null,
+      today.due.length + today.practiceDue.length > 0 ? plural(today.due.length + today.practiceDue.length, 'review is due', 'reviews are due') : null,
       today.work.unfinishedCount > 0 ? plural(today.work.unfinishedCount, 'piece of work is unfinished', 'pieces of work are unfinished') : null,
       `you practised on ${today.week.activeDays} of the last 7 days`,
     ].filter(Boolean);
@@ -405,7 +449,7 @@ export function DashboardPage() {
             <ContinueSection items={today.work.continueItems} now={today.now} />
           </div>
           <div className="flex flex-col gap-10 lg:col-start-2 lg:row-span-3 lg:row-start-1 lg:self-start">
-            <ReviewsSection due={today.due} nextDueAt={today.nextDueAt} total={today.vocabularyTotal} now={today.now} />
+            <ReviewsSection due={today.due} practiceDue={today.practiceDue} nextDueAt={today.nextDueAt} total={today.vocabularyTotal} now={today.now} />
             <div className="hidden lg:block">
               <QuickStart />
             </div>

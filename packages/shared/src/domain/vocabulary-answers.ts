@@ -35,27 +35,47 @@ export interface ExpectedAnswer {
   readonly forms?: readonly string[];
 }
 
+/**
+ * The language an answer is written in: a target language, or Portuguese
+ * (Portugal) for English → Portuguese questions, where the learner answers in
+ * their support language.
+ */
+export type AnswerLanguage = LanguageCode | 'pt';
+
 interface LanguageRules {
   /** Whether diacritics distinguish words (true by default: "e" and "é" differ in Portuguese, French…). */
   readonly accentsDistinguish: boolean;
+  /**
+   * Articles that may be written before a translation or left out ("o livro"
+   * and "livro" both name the meaning). Only a leading article is ignored,
+   * and only when something remains.
+   */
+  readonly optionalArticles: readonly string[];
 }
 
 /**
  * English rarely uses diacritics and treats them as optional ("café"/"cafe",
- * "naïve"/"naive"). Languages without an entry get the strict default, so a
- * future pack never inherits English leniency by accident.
+ * "naïve"/"naive"). Portuguese keeps them distinctive (a near miss, never
+ * correct) but lets an article be added or dropped. Languages without an entry
+ * get the strict default, so a future pack never inherits leniency by accident.
  */
-const LANGUAGE_RULES: Partial<Record<LanguageCode, LanguageRules>> = {
-  en: { accentsDistinguish: false },
+const LANGUAGE_RULES: Partial<Record<AnswerLanguage, LanguageRules>> = {
+  en: { accentsDistinguish: false, optionalArticles: [] },
+  pt: { accentsDistinguish: true, optionalArticles: ['o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas'] },
 };
-const DEFAULT_RULES: LanguageRules = { accentsDistinguish: true };
+const DEFAULT_RULES: LanguageRules = { accentsDistinguish: true, optionalArticles: [] };
 
-function rulesFor(language: LanguageCode): LanguageRules {
+function rulesFor(language: AnswerLanguage): LanguageRules {
   return LANGUAGE_RULES[language] ?? DEFAULT_RULES;
 }
 
+function withoutArticle(value: string, rules: LanguageRules): string {
+  const [first, ...rest] = value.split(' ');
+  return rest.length > 0 && first !== undefined && rules.optionalArticles.includes(first) ? rest.join(' ') : value;
+}
+
 /** Generic normalisation, safe for any language written with spaces between words. */
-export function normalizeTyped(value: string, language: LanguageCode): string {
+export function normalizeTyped(value: string, language: AnswerLanguage): string {
   return (
     value
       .normalize('NFC')
@@ -95,14 +115,15 @@ function typoDistance(a: string, b: string): number {
   return differing.length === 2 && first !== undefined && second === first + 1 && left[first] === right[second] && left[second] === right[first] ? 1 : distance;
 }
 
-export function matchVocabularyAnswer(input: string, expected: ExpectedAnswer, language: LanguageCode): MatchResult {
+export function matchVocabularyAnswer(input: string, expected: ExpectedAnswer, language: AnswerLanguage): MatchResult {
   const rules = rulesFor(language);
-  const typed = normalizeTyped(input, language);
-  const answer = normalizeTyped(expected.answer, language);
+  const normalize = (value: string) => withoutArticle(normalizeTyped(value, language), rules);
+  const typed = normalize(input);
+  const answer = normalize(expected.answer);
   if (typed === '') return { verdict: 'empty', reason: 'none', closest: expected.answer };
 
-  const listed = [expected.answer, ...(expected.accepted ?? [])].map((value) => ({ value, normalized: normalizeTyped(value, language) }));
-  const forms = (expected.forms ?? []).map((value) => ({ value, normalized: normalizeTyped(value, language) })).filter((form) => !listed.some((item) => item.normalized === form.normalized));
+  const listed = [expected.answer, ...(expected.accepted ?? [])].map((value) => ({ value, normalized: normalize(value) }));
+  const forms = (expected.forms ?? []).map((value) => ({ value, normalized: normalize(value) })).filter((form) => !listed.some((item) => item.normalized === form.normalized));
 
   // 1. Listed answers, exactly.
   for (const item of listed) if (item.normalized === typed) return { verdict: 'correct', reason: item.normalized === answer ? 'exact' : 'variant', closest: item.value };
@@ -131,14 +152,30 @@ export function matchVocabularyAnswer(input: string, expected: ExpectedAnswer, l
   return { verdict: 'incorrect', reason: 'none', closest: expected.answer };
 }
 
+/**
+ * What the question asked for, so feedback can say why a form is wrong:
+ * `context` (the form a sentence needs), `lemma` (the dictionary form) or
+ * `translation` (a Portuguese translation). `answer` is the main expected answer.
+ */
+export interface MatchSituation {
+  readonly expects: 'context' | 'lemma' | 'translation';
+  readonly answer: string;
+}
+
 /** Learner-facing feedback for a verdict. */
-export function describeMatch(result: MatchResult): string {
+export function describeMatch(result: MatchResult, situation?: MatchSituation): string {
   switch (result.verdict) {
     case 'correct':
-      return result.reason === 'variant' ? `Correct (also: ${result.closest}).` : result.reason === 'hyphenation' ? `Correct. Also written “${result.closest}”.` : 'Correct.';
+      if (result.reason === 'variant') {
+        // An alternative the learner listed for this sense: correct, and worth knowing the main answer too.
+        return situation && situation.answer !== result.closest ? `Correct — “${result.closest}” is an accepted alternative. Main answer: “${situation.answer}”.` : `Correct (also: ${result.closest}).`;
+      }
+      return result.reason === 'hyphenation' ? `Correct. Also written “${result.closest}”.` : 'Correct.';
     case 'almost':
       return result.reason === 'accents' ? `Almost — check the accents: “${result.closest}”.` : `Almost — check the spelling: “${result.closest}”.`;
     case 'wrong_form':
+      if (situation?.expects === 'context') return `Right word and meaning, but not the form this sentence needs: “${result.closest}”.`;
+      if (situation?.expects === 'lemma') return `Right word, wrong grammatical form. Write the dictionary form: “${result.closest}”.`;
       return `Correct word, wrong grammatical form. Expected: “${result.closest}”.`;
     case 'incorrect':
       return `Incorrect — expected answer: “${result.closest}”.`;

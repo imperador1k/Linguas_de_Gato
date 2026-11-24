@@ -3,8 +3,10 @@ import {
   describeMatch,
   hintMask,
   hintsUsed,
+  isCollectionRef,
   matchLocalAnswer,
   nextHint,
+  situationOf,
   type LocalVocabularyQuestion,
   type MatchResult,
   type TrainerHint,
@@ -23,9 +25,10 @@ import { describeStorageFailure } from '@/lib/storage/feature-storage';
 import { cn } from '@/lib/utils';
 import { loadPackById } from '../library/pack-loader';
 import { vocabularyStorage } from '../storage/vocabulary-repository';
+import { HighlightedContext } from '../vocabulary-detail';
 import { clearPendingHints, clearRoundHints, loadPendingHints, savePendingHints } from './pending-hints';
 import { MODE_LABELS } from './trainer-labels';
-import { finishRound, isLocalSet, localQuestions, retryMissed, saveAnswer, type FinishOutcome } from './trainer-service';
+import { finishRound, isLocalSet, localQuestions, packIdOf, retryMissed, saveAnswer, type FinishOutcome } from './trainer-service';
 
 const BACK = { to: '/vocabulary', label: 'Vocabulary' } as const;
 
@@ -56,25 +59,40 @@ function Sentence({ text, fill }: { text: string; fill?: string }) {
   );
 }
 
+const PROMPT_LABELS: Record<Exclude<LocalVocabularyQuestion['type'], 'context'>, { label: string; lang: string }> = {
+  spelling: { label: 'Portuguese (Portugal)', lang: 'pt-PT' },
+  recognition: { label: 'English', lang: 'en' },
+  definition: { label: 'Definition', lang: 'en' },
+};
+
 function Prompt({ question }: { question: LocalVocabularyQuestion }) {
   if (question.type === 'context') {
     return (
       <div className="flex flex-col gap-3">
         {question.clue ? (
           <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">Clue:</span> {question.clue}
+            <span className="font-medium text-foreground">Meaning:</span> {question.clue}
           </p>
         ) : null}
         <Sentence text={question.prompt} />
       </div>
     );
   }
+  const label = PROMPT_LABELS[question.type];
   return (
     <div className="flex flex-col gap-1">
-      <p className="text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">{question.type === 'spelling' ? 'Portuguese (Portugal)' : 'Definition'}</p>
-      <p className="font-serif text-[1.5rem] leading-snug" lang={question.type === 'spelling' ? 'pt-PT' : 'en'}>
+      <p className="text-xs font-medium tracking-[0.08em] text-muted-foreground uppercase">
+        {label.label}
+        {question.partOfSpeech ? <span className="ml-2 font-normal tracking-normal normal-case">· {question.partOfSpeech}</span> : null}
+      </p>
+      <p className="font-serif text-[1.5rem] leading-snug" lang={label.lang}>
         {question.prompt}
       </p>
+      {question.type === 'recognition' && question.example ? (
+        <p className="mt-1 font-serif text-[1.0625rem] leading-relaxed text-muted-foreground" lang="en">
+          <HighlightedContext sentence={question.example} expression={question.prompt} />
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -93,7 +111,7 @@ function Feedback({ question, answer, result, last, onNext }: { question: LocalV
           {style.title}
           {result.verdict === 'correct' && hints > 0 ? <span className="text-sm font-normal text-muted-foreground">· with {hints} hint{hints === 1 ? '' : 's'}</span> : null}
         </p>
-        <p className="text-sm">{result.verdict === 'empty' ? `The answer is “${question.answer}”.` : describeMatch(result)}</p>
+        <p className="text-sm">{result.verdict === 'empty' ? `The answer is “${question.answer}”.` : describeMatch(result, situationOf(question))}</p>
         {question.type === 'context' ? <Sentence text={question.prompt} fill={result.verdict === 'correct' ? result.closest : question.answer} /> : null}
         {question.accepted.length > 0 ? (
           <p className="text-xs text-muted-foreground">
@@ -115,8 +133,10 @@ function QuestionView({ setId, question, onSubmit }: { setId: string; question: 
   // Hints taken before leaving the round come back, so they still count when the answer is scored.
   const [hints, setHints] = useState<TrainerHint[]>(() => loadPendingHints(setId, question.id, question.answer));
   const [busy, setBusy] = useState(false);
-  const hint = question.type !== 'context' ? nextHint(question.answer, hints) : null;
+  // Hints come one at a time and never give the whole answer away.
+  const hint = nextHint(question.answer, hints);
   const mask = hintMask(question.answer, hints);
+  const answerLang = question.type === 'recognition' ? 'pt-PT' : question.language;
 
   async function submit(value: string) {
     if (busy) return;
@@ -135,7 +155,7 @@ function QuestionView({ setId, question, onSubmit }: { setId: string; question: 
     <form onSubmit={onForm} className="flex flex-col gap-4">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="trainer-answer" className="text-sm font-medium">
-          Your answer
+          {question.type === 'recognition' ? 'Your answer in Portuguese' : 'Your answer in English'}
         </label>
         <Input
           id="trainer-answer"
@@ -145,7 +165,7 @@ function QuestionView({ setId, question, onSubmit }: { setId: string; question: 
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          lang={question.language}
+          lang={answerLang}
           maxLength={120}
           disabled={busy}
           onChange={(event) => setText(event.target.value)}
@@ -197,13 +217,24 @@ function Results({ set, outcome, onRetry, retrying }: { set: VocabularyPracticeS
   const correct = count('correct');
   const hinted = rows.filter((row) => row.result?.verdict === 'correct' && row.hints > 0).length;
   const hard = rows.filter((row) => row.result?.verdict !== 'correct' || row.hints > 0).length;
+  const wrongForm = (inContext: boolean) => rows.filter((row) => row.result?.verdict === 'wrong_form' && (row.question.type === 'context') === inContext).length;
+  // The kinds of error made, so the learner sees what went wrong, not just how much.
   const summary = [
     { label: 'Correct', value: correct - hinted },
     { label: 'Correct with hints', value: hinted },
-    { label: 'Almost', value: count('almost') },
-    { label: 'Wrong form', value: count('wrong_form') },
-    { label: 'Incorrect', value: count('incorrect') + count('empty') },
+    { label: 'Almost (spelling or accents)', value: count('almost') },
+    { label: 'Not the dictionary form', value: wrongForm(false) },
+    { label: 'Wrong form for the sentence', value: wrongForm(true) },
+    { label: 'Incorrect', value: count('incorrect') },
+    { label: 'Not known', value: count('empty') },
   ].filter((item) => item.value > 0);
+  const directions = (['spelling', 'recognition', 'context', 'definition'] as const)
+    .map((type) => {
+      const ofType = rows.filter((row) => row.question.type === type);
+      return { type, total: ofType.length, correct: ofType.filter((row) => row.result?.verdict === 'correct' && row.hints === 0).length };
+    })
+    .filter((item) => item.total > 0);
+  const fromCollection = questions.some((question) => isCollectionRef(question.ref));
 
   return (
     <div className="flex flex-col gap-6">
@@ -218,12 +249,25 @@ function Results({ set, outcome, onRetry, retrying }: { set: VocabularyPracticeS
             </li>
           ))}
         </ul>
+        {directions.length > 1 ? (
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground" aria-label="Correct without hints, by exercise">
+            {directions.map((item) => (
+              <li key={item.type}>
+                {MODE_LABELS[item.type].short}{' '}
+                <span className="font-medium text-foreground tabular-nums">
+                  {item.correct}/{item.total}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {outcome && (outcome.added > 0 || outcome.rescheduled > 0) ? (
           <p className="mt-3 text-sm text-muted-foreground">
             {outcome.added > 0 ? `${outcome.added} word${outcome.added === 1 ? '' : 's'} added to your collection. ` : ''}
-            {outcome.rescheduled > 0 ? `${outcome.rescheduled} review date${outcome.rescheduled === 1 ? '' : 's'} updated.` : ''}
+            {outcome.rescheduled > 0 ? `${outcome.rescheduled} review date${outcome.rescheduled === 1 ? '' : 's'} updated, each for the direction you answered.` : ''}
           </p>
         ) : null}
+        <p className="mt-2 text-xs text-muted-foreground">Only answers without hints move a word up its schedule, and only while it is due. A wrong answer brings it back tomorrow.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {hard > 0 ? (
             <Button disabled={retrying} onClick={onRetry}>
@@ -231,7 +275,7 @@ function Results({ set, outcome, onRetry, retrying }: { set: VocabularyPracticeS
               Practise the {hard} that {hard === 1 ? 'was' : 'were'} hard
             </Button>
           ) : null}
-          <Link to="/vocabulary?view=library&train=1" className={buttonVariants({ variant: hard > 0 ? 'secondary' : 'primary' })}>
+          <Link to={fromCollection ? '/vocabulary?train=1' : '/vocabulary?view=library&train=library'} className={buttonVariants({ variant: hard > 0 ? 'secondary' : 'primary' })}>
             New round
           </Link>
           <Link to="/vocabulary" className={buttonVariants({ variant: 'ghost' })}>
@@ -265,6 +309,7 @@ function Results({ set, outcome, onRetry, retrying }: { set: VocabularyPracticeS
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-1.5">
+                  {directions.length > 1 ? <Badge variant="outline">{MODE_LABELS[question.type].short}</Badge> : null}
                   <Badge variant={style.badge}>{style.title}</Badge>
                   {hints > 0 ? <Badge variant="outline">{hints} hint{hints === 1 ? '' : 's'}</Badge> : null}
                 </div>
@@ -319,7 +364,7 @@ export function TrainerPage() {
     finishing.current = true;
     setError(null);
     try {
-      const packId = localQuestions(set)[0]?.ref.packId;
+      const packId = packIdOf(set);
       const pack = packId ? await loadPackById(packId) : null;
       const result = await finishRound(storage.repository, set.id, pack);
       clearRoundHints(set.id);
@@ -357,7 +402,8 @@ export function TrainerPage() {
   const feedbackIndex = feedbackFor ? questions.findIndex((question) => question.id === feedbackFor) : -1;
   const activeIndex = feedbackIndex >= 0 ? feedbackIndex : nextIndex;
   const active = activeIndex >= 0 ? questions[activeIndex] : undefined;
-  const mode = MODE_LABELS[questions[0]?.type ?? 'spelling'];
+  const mixed = new Set(questions.map((question) => question.type)).size > 1;
+  const mode = mixed ? { label: 'Mixed', instruction: 'Each question says which direction it practises. Answer in the language it asks for.' } : MODE_LABELS[questions[0]?.type ?? 'spelling'];
   const done = activeIndex < 0;
 
   async function submit(question: LocalVocabularyQuestion, text: string, hints: TrainerHint[]) {
@@ -408,7 +454,7 @@ export function TrainerPage() {
               <span className="text-muted-foreground">
                 Question <span className="font-medium text-foreground tabular-nums">{activeIndex + 1}</span> of <span className="tabular-nums">{questions.length}</span>
               </span>
-              <Badge variant="neutral">{mode.label}</Badge>
+              <Badge variant="neutral">{MODE_LABELS[active.type].label}</Badge>
             </div>
             <div role="progressbar" aria-label="Round progress" aria-valuemin={0} aria-valuemax={questions.length} aria-valuenow={answers.size} className="h-1.5 overflow-hidden rounded-full bg-muted">
               <div className="h-full rounded-full bg-brand transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${(answers.size / questions.length) * 100}%` }} />

@@ -11,13 +11,15 @@ import {
   type VocabularySense,
 } from '../contracts/vocabulary.js';
 import type { CefrLevel } from './languages.js';
-import { matchVocabularyAnswer, type MatchResult } from './vocabulary-answers.js';
+import { matchVocabularyAnswer, type AnswerLanguage, type MatchResult, type MatchSituation } from './vocabulary-answers.js';
 import { initialReviewState, isDue, seededShuffle, vocabularyKey } from './vocabulary.js';
 
 /*
- * Vocabulary Trainer logic: which pack entries suit which mode, filtering,
- * a deterministic round builder, progressive hints, and how a checked round
- * feeds the existing collection and review ladder (no second scheduler).
+ * Vocabulary Trainer logic for packs: which pack entries suit which mode,
+ * filtering, a deterministic round builder, progressive hints, the rating
+ * policy, and how a trained pack sense joins the collection. Since V1 the
+ * rating policy is applied per sense and facet (`vocabulary-knowledge.ts`);
+ * rounds on the learner's own words are built in `vocabulary-collection.ts`.
  */
 
 // --- Mode availability ------------------------------------------------------------------------
@@ -25,6 +27,7 @@ import { initialReviewState, isDue, seededShuffle, vocabularyKey } from './vocab
 export function senseSupports(sense: PackSense, mode: AvailableTrainerMode): boolean {
   switch (mode) {
     case 'spelling':
+    case 'recognition':
       return (sense.translations['pt-PT']?.length ?? 0) > 0;
     case 'definition':
       return sense.definition !== null;
@@ -76,6 +79,9 @@ export function packItemId(packId: string, entryId: string, senseId: string): st
 /** Review state of the collection entry a pack entry has become, if it has been trained before. */
 export type ProgressLookup = (entry: PackEntry) => ReviewState | null;
 
+/** Order of attention: 0 difficult, 1 due, 2 new (never trained), 3 the rest. */
+export type TrainingPriority = 0 | 1 | 2 | 3;
+
 export interface RoundOptions {
   readonly pack: VocabularyPack;
   readonly filters: PackFilters;
@@ -86,6 +92,8 @@ export interface RoundOptions {
   readonly now: number;
   /** When given, due and difficult words come first, then new ones, then the rest. */
   readonly progress?: ProgressLookup;
+  /** The same ordering from per-sense, per-facet evidence (V1); takes precedence over `progress`. */
+  readonly priority?: (entry: PackEntry, sense: PackSense) => TrainingPriority;
 }
 
 /** A word is difficult when its most recent rating (review or trainer) was "again". */
@@ -93,7 +101,7 @@ export function isDifficult(state: ReviewState | null): boolean {
   return state !== null && state.history.at(-1)?.rating === 'again';
 }
 
-function priorityOf(state: ReviewState | null, now: number): number {
+function priorityOf(state: ReviewState | null, now: number): TrainingPriority {
   if (state === null) return 2; // never trained: new material after what needs attention
   if (isDifficult(state)) return 0;
   if (state.dueAt <= now) return 1;
@@ -121,6 +129,21 @@ function questionFor(pack: VocabularyPack, entry: PackEntry, sense: PackSense, m
     lemma: entry.lemma,
   };
   const ref = { packId: pack.id, packVersion: pack.version, entryId: entry.id, senseId: sense.id };
+  if (mode === 'recognition') {
+    const translations = sense.translations['pt-PT'] ?? [];
+    const example = sense.contexts[0];
+    return {
+      ...base,
+      type: 'recognition',
+      prompt: entry.lemma,
+      example: example ? example.sentence.replace(GAP_MARKER, example.answer) : null,
+      answer: translations[0] ?? entry.lemma,
+      accepted: translations.slice(1, 13),
+      forms: [],
+      partOfSpeech: entry.partOfSpeech,
+      ref: { ...ref, contextId: null },
+    };
+  }
   if (mode === 'context') {
     const order = seededShuffle(sense.contexts.length, `${seed}:${entry.id}:${sense.id}`);
     const example = sense.contexts[order[0] ?? 0] ?? sense.contexts[0];
@@ -146,7 +169,7 @@ function questionFor(pack: VocabularyPack, entry: PackEntry, sense: PackSense, m
  * one question per entry (so one question never gives away another), in a
  * seeded order, optionally putting difficult and due words first.
  */
-export function buildLocalRound({ pack, filters, mode, count, seed, now, progress }: RoundOptions): LocalVocabularyQuestion[] {
+export function buildLocalRound({ pack, filters, mode, count, seed, now, progress, priority }: RoundOptions): LocalVocabularyQuestion[] {
   const candidates = filterPackEntries(pack, filters).flatMap((entry) => {
     const senses = entry.senses.filter((sense) => senseSupports(sense, mode));
     if (senses.length === 0) return [];
@@ -155,7 +178,8 @@ export function buildLocalRound({ pack, filters, mode, count, seed, now, progres
   });
   const order = seededShuffle(candidates.length, seed);
   const shuffled = order.map((index) => candidates[index]).filter((candidate): candidate is (typeof candidates)[number] => candidate !== undefined);
-  const ranked = progress ? shuffled.map((candidate, position) => ({ candidate, position, priority: priorityOf(progress(candidate.entry), now) })).sort((a, b) => a.priority - b.priority || a.position - b.position).map(({ candidate }) => candidate) : shuffled;
+  const rank = priority ? (candidate: (typeof candidates)[number]) => priority(candidate.entry, candidate.sense) : progress ? (candidate: (typeof candidates)[number]) => priorityOf(progress(candidate.entry), now) : null;
+  const ranked = rank ? shuffled.map((candidate, position) => ({ candidate, position, priority: rank(candidate) })).sort((a, b) => a.priority - b.priority || a.position - b.position).map(({ candidate }) => candidate) : shuffled;
   return ranked.slice(0, Math.max(0, count)).map(({ entry, sense }, index) => questionFor(pack, entry, sense, mode, index, seed));
 }
 
@@ -204,9 +228,19 @@ export function hintMask(answer: string, hints: readonly TrainerHint[]): string 
 
 // --- Evaluation and evidence ----------------------------------------------------------------
 
+/** The language the learner answers in: Portuguese for English → Portuguese, otherwise the target language. */
+export function answerLanguageOf(question: Pick<LocalVocabularyQuestion, 'type' | 'language'>): AnswerLanguage {
+  return question.type === 'recognition' ? 'pt' : question.language;
+}
+
 export function matchLocalAnswer(question: LocalVocabularyQuestion, answer: VocabularyAnswer | undefined): MatchResult | null {
   if (!answer || answer.kind !== 'typed') return null;
-  return matchVocabularyAnswer(answer.text, { answer: question.answer, accepted: question.accepted, forms: question.forms }, question.language);
+  return matchVocabularyAnswer(answer.text, { answer: question.answer, accepted: question.accepted, forms: question.forms }, answerLanguageOf(question));
+}
+
+/** What a local question expects, for feedback that names the problem. */
+export function situationOf(question: LocalVocabularyQuestion): MatchSituation {
+  return { expects: question.type === 'context' ? 'context' : question.type === 'recognition' ? 'translation' : 'lemma', answer: question.answer };
 }
 
 export function hintsUsed(answer: VocabularyAnswer | undefined): number {
@@ -254,6 +288,12 @@ function senseFromPack(pack: VocabularyPack, entry: PackEntry, sense: PackSense,
     cefr: entry.cefr ? { level: entry.cefr.level, source: (source?.name ?? entry.cefr.source).slice(0, 120), certainty: entry.cefr.certainty } : null,
     portugueseExplanation: translations.length ? translations.join(', ').slice(0, 600) : null,
     addedAt: now,
+    // V1: the pack's answer data travels with the sense, so it can be trained from the collection too.
+    ...(translations.length ? { translations: translations.slice(0, 6) } : {}),
+    alternatives: [...new Set([...entry.variants, ...sense.accepted])].slice(0, 6),
+    forms: [...new Set(Object.values(entry.forms))].filter((form) => form.toLowerCase() !== entry.lemma.toLowerCase()).slice(0, 12),
+    // Evidence starts empty and is filled by the round that adopts it.
+    knowledge: {},
   };
 }
 

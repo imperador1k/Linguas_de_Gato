@@ -17,8 +17,18 @@ export const VOCABULARY_LIMITS = {
   maxParagraphChars: 4_000,
   maxPracticeItems: 20,
   minQuestions: 4,
+  /** AI-generated practice. */
   maxQuestions: 12,
+  /** A stored set: AI practice (up to 12) or a local trainer round (up to 20). */
+  maxRoundQuestions: 20,
   maxAnswerChars: 400,
+  /** Personal data on a sense: Portuguese translations, accepted English answers, other forms. */
+  maxTranslations: 6,
+  maxAlternatives: 6,
+  maxForms: 12,
+  maxNoteChars: 600,
+  /** Attempts kept per sense and facet (older ones are dropped; the schedule keeps their effect). */
+  maxFacetAttempts: 30,
 } as const;
 
 export const EXPRESSION_KINDS = ['word', 'phrasal_verb', 'idiom', 'collocation', 'expression'] as const;
@@ -104,12 +114,63 @@ export const vocabularySourceSchema = z.discriminatedUnion('kind', [
 ]);
 export type VocabularySource = z.infer<typeof vocabularySourceSchema>;
 
+// --- Learning evidence ------------------------------------------------------------------------
+
+/**
+ * The separately learnable aspects of one sense. Each has its own evidence and
+ * its own schedule: recognising "eat" (EN → PT) says nothing about recalling it
+ * (PT → EN), and neither says the learner can produce "ate" in a sentence.
+ */
+export const VOCABULARY_FACETS = ['recognition', 'recall', 'context'] as const;
+export const vocabularyFacetSchema = z.enum(VOCABULARY_FACETS);
+export type VocabularyFacet = z.infer<typeof vocabularyFacetSchema>;
+
+/** What one answer showed. `skipped` is a deliberate "I don't know". */
+export const FACET_OUTCOMES = ['correct', 'almost', 'wrong_form', 'incorrect', 'skipped'] as const;
+export type FacetOutcome = (typeof FACET_OUTCOMES)[number];
+
+export const facetAttemptSchema = z
+  .object({
+    at: z.number().int().nonnegative(),
+    outcome: z.enum(FACET_OUTCOMES),
+    /** Hints taken before answering; a hinted answer is weaker evidence. */
+    hints: z.number().int().min(0).max(20),
+    /** The form the exercise expected (the lemma, or the inflected form a sentence needed). */
+    expected: z.string().trim().min(1).max(80),
+    /** The trainer round (practice set) this answer came from. */
+    roundId: z.string().min(1).max(128).nullable(),
+  })
+  .strict();
+export type FacetAttempt = z.infer<typeof facetAttemptSchema>;
+
+/**
+ * Evidence and schedule for one sense × facet: the recent attempts (the
+ * evidence, newest last) and the place on the review ladder they led to.
+ */
+export const facetKnowledgeSchema = z
+  .object({
+    /** Index into the review ladder (`REVIEW_LADDER_DAYS`). */
+    step: z.number().int().min(0).max(10),
+    dueAt: z.number().int().nonnegative(),
+    attempts: z.array(facetAttemptSchema).max(VOCABULARY_LIMITS.maxFacetAttempts),
+  })
+  .strict();
+export type FacetKnowledge = z.infer<typeof facetKnowledgeSchema>;
+
+export const senseKnowledgeSchema = z
+  .object({ recognition: facetKnowledgeSchema.optional(), recall: facetKnowledgeSchema.optional(), context: facetKnowledgeSchema.optional() })
+  .strict();
+export type SenseKnowledge = z.infer<typeof senseKnowledgeSchema>;
+
+const term = (max: number) => z.string().trim().min(1).max(max);
+
 export const vocabularySenseSchema = z
   .object({
     id: z.string().min(1).max(64),
     contextualMeaning: line(400),
     dictionaryMeaning: line(400),
-    partOfSpeech: line(40),
+    /** Empty when the learner did not say (manual entries). */
+    partOfSpeech: z.string().trim().max(40),
     /** The sentence where the learner met this sense. */
     context: z.string().max(VOCABULARY_LIMITS.maxSentenceChars),
     source: vocabularySourceSchema,
@@ -125,6 +186,20 @@ export const vocabularySenseSchema = z
     cefr: z.object({ level: cefrEstimateSchema, source: z.string().min(1).max(120), certainty: z.enum(['listed', 'estimated']) }).strict().nullable().optional(),
     portugueseExplanation: z.string().max(600).nullable(),
     addedAt: z.number().int().nonnegative(),
+    /*
+     * Personal training data (V1). All optional, so records saved before keep
+     * validating unchanged. Accepted answers are explicit and belong to this
+     * sense only: nothing else is ever accepted.
+     */
+    /** Portuguese (Portugal) translations of this sense: the first is the main one, the rest are also accepted. */
+    translations: z.array(term(80)).max(VOCABULARY_LIMITS.maxTranslations).optional(),
+    /** Other English answers accepted for this sense when recalling it (true equivalents, chosen by the learner). */
+    alternatives: z.array(term(80)).max(VOCABULARY_LIMITS.maxAlternatives).optional(),
+    /** Other grammatical forms of the word in this sense ("eats", "ate", "eaten"). Never guessed. */
+    forms: z.array(term(80)).max(VOCABULARY_LIMITS.maxForms).optional(),
+    notes: z.string().trim().max(VOCABULARY_LIMITS.maxNoteChars).optional(),
+    /** What the learner has demonstrated for this sense, per facet. Absent until first trained. */
+    knowledge: senseKnowledgeSchema.optional(),
   })
   .strict();
 export type VocabularySense = z.infer<typeof vocabularySenseSchema>;
@@ -175,11 +250,16 @@ export const vocabularyQuestionTypeSchema = z.enum(VOCABULARY_QUESTION_TYPES);
 export type VocabularyQuestionType = z.infer<typeof vocabularyQuestionTypeSchema>;
 
 /**
- * Questions built locally from a vocabulary pack (Vocabulary Trainer). They are
- * never requested from the AI: the generation request and the model schema keep
- * using `VOCABULARY_QUESTION_TYPES` only.
+ * Questions built locally from a vocabulary pack or the learner's own
+ * collection (Vocabulary Trainer). They are never requested from the AI: the
+ * generation request and the model schema keep using
+ * `VOCABULARY_QUESTION_TYPES` only.
+ * - `spelling`: Portuguese → English recall (the stored name predates V1; the UI calls it "Portuguese → English").
+ * - `recognition`: English → Portuguese.
+ * - `context`: complete a sentence with the form it needs.
+ * - `definition`: English definition → the word (packs only).
  */
-export const LOCAL_VOCABULARY_QUESTION_TYPES = ['spelling', 'context', 'definition'] as const;
+export const LOCAL_VOCABULARY_QUESTION_TYPES = ['spelling', 'context', 'definition', 'recognition'] as const;
 export type LocalVocabularyQuestionType = (typeof LOCAL_VOCABULARY_QUESTION_TYPES)[number];
 /** Every type a stored practice set may contain. */
 export const storedVocabularyQuestionTypeSchema = z.enum([...VOCABULARY_QUESTION_TYPES, ...LOCAL_VOCABULARY_QUESTION_TYPES]);
@@ -237,6 +317,32 @@ export const modelVocabularyQuestionSchema = z
   .strict();
 export type ModelVocabularyQuestion = z.infer<typeof modelVocabularyQuestionSchema>;
 
+/** Which pack sense a local question practises (rounds built from a vocabulary pack). */
+export const packQuestionRefSchema = z
+  .object({
+    packId: z.string().min(1).max(32),
+    packVersion: z.string().min(1).max(20),
+    entryId: z.string().min(1).max(48),
+    senseId: z.string().min(1).max(16),
+    contextId: z.string().min(1).max(24).nullable(),
+  })
+  .strict();
+/** Which collection sense a local question practises (rounds built from the learner's own vocabulary). */
+export const collectionQuestionRefSchema = z
+  .object({
+    kind: z.literal('collection'),
+    entryId: z.string().min(1).max(128),
+    senseId: z.string().min(1).max(64),
+    contextId: z.string().min(1).max(24).nullable(),
+  })
+  .strict();
+export type PackQuestionRef = z.infer<typeof packQuestionRefSchema>;
+export type CollectionQuestionRef = z.infer<typeof collectionQuestionRefSchema>;
+
+export function isCollectionRef(ref: PackQuestionRef | CollectionQuestionRef): ref is CollectionQuestionRef {
+  return 'kind' in ref && ref.kind === 'collection';
+}
+
 const questionBase = { id: z.string().min(1).max(16), itemId: z.string().min(1).max(128), prompt: line(500), explanation: line(500) };
 
 export const vocabularyQuestionSchema = z.discriminatedUnion('type', [
@@ -258,32 +364,32 @@ function localQuestionSchemas() {
   const term = z.string().trim().min(1).max(80);
   const local = {
     ...questionBase,
-    /** `itemId` for local questions is the pack reference "packId/entryId/senseId". */
+    /**
+     * `itemId` for local questions: the pack reference "packId/entryId/senseId",
+     * or "collection/entryId/senseId" for the learner's own vocabulary.
+     */
     language: languageCodeSchema,
     lemma: term,
-    /** The answer the prompt asks for (the lemma, or the inflected form a sentence needs). */
+    /** The answer the prompt asks for (the lemma, the inflected form a sentence needs, or a translation). */
     answer: term,
     /** Other answers that are genuinely correct. Nothing else is accepted. */
     accepted: z.array(term).max(12),
     /** Other forms of the same word, recognised as "right word, wrong form". */
     forms: z.array(term).max(16),
-    ref: z
-      .object({
-        packId: z.string().min(1).max(32),
-        packVersion: z.string().min(1).max(20),
-        entryId: z.string().min(1).max(48),
-        senseId: z.string().min(1).max(16),
-        contextId: z.string().min(1).max(24).nullable(),
-      })
-      .strict(),
+    /** Records before V1 have no `kind` and always point at a pack. */
+    ref: z.union([collectionQuestionRefSchema, packQuestionRefSchema]),
+    /** The sense's part of speech, shown with the prompt to tell meanings apart (V1; optional). */
+    partOfSpeech: z.string().trim().max(40).optional(),
   };
   return [
-    /** Prompt: the Portuguese translation(s). */
+    /** Prompt: the Portuguese translation(s). Answer: the English lemma. */
     z.object({ ...local, type: z.literal('spelling') }).strict(),
     /** Prompt: a sentence with one gap; `clue` is the semantic hint. */
     z.object({ ...local, type: z.literal('context'), clue: z.string().max(300).nullable() }).strict(),
     /** Prompt: an English definition. */
     z.object({ ...local, type: z.literal('definition') }).strict(),
+    /** Prompt: the English word (and an example, when there is one). Answer: a Portuguese translation. */
+    z.object({ ...local, type: z.literal('recognition'), example: z.string().max(VOCABULARY_LIMITS.maxSentenceChars).nullable() }).strict(),
   ] as const;
 }
 
@@ -354,14 +460,15 @@ export const vocabularyPracticeSetSchema = z.object({
   id: z.string().min(1).max(128),
   version: z.literal(VOCABULARY_RECORD_VERSION),
   /** The entries practised, for display and cleanup. */
-  entryIds: z.array(z.string().min(1).max(128)).min(1).max(VOCABULARY_LIMITS.maxPracticeItems),
+  entryIds: z.array(z.string().min(1).max(200)).min(1).max(VOCABULARY_LIMITS.maxRoundQuestions),
   types: z.array(storedVocabularyQuestionTypeSchema).min(1),
-  questions: z.array(vocabularyQuestionSchema).min(1).max(VOCABULARY_LIMITS.maxQuestions),
+  // Trainer rounds go up to 20 questions (the round sizes offered); AI sets stay at 12 by their own request schema.
+  questions: z.array(vocabularyQuestionSchema).min(1).max(VOCABULARY_LIMITS.maxRoundQuestions),
   /** Matching meanings are shown shuffled; this is the display order per matching question. */
   shuffles: z.record(z.string(), z.array(z.number().int().min(0).max(5))),
   discarded: z.number().int().nonnegative(),
   model: z.string().min(1).max(100),
-  answers: z.array(vocabularyAnswerSchema).max(VOCABULARY_LIMITS.maxQuestions),
+  answers: z.array(vocabularyAnswerSchema).max(VOCABULARY_LIMITS.maxRoundQuestions),
   reviews: z.array(storedVocabularyReviewSchema).max(VOCABULARY_LIMITS.maxQuestions),
   checkedAt: z.number().int().nonnegative().nullable(),
   history: z.array(z.object({ checkedAt: z.number().int().nonnegative(), correct: z.number().int().nonnegative(), objectiveTotal: z.number().int().nonnegative() }).strict()).max(100),

@@ -1,6 +1,16 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
-import { NO_PACK_FILTERS, hintsUsed, vocabularyPackSchema, type LocalVocabularyQuestion, type TrainerHint, type VocabularyPack } from '@ldg/shared';
+import {
+  NO_PACK_FILTERS,
+  hintsUsed,
+  initialReviewState,
+  vocabularyPackSchema,
+  type LocalVocabularyQuestion,
+  type TrainerHint,
+  type VocabularyEntry,
+  type VocabularyFacet,
+  type VocabularyPack,
+} from '@ldg/shared';
 import { describe, expect, it } from 'vitest';
 import { openAppDatabase } from '@/lib/storage/app-database';
 import { indexedDbVocabularyRepository, memoryVocabularyRepository, type VocabularyRepository } from '../storage/vocabulary-repository';
@@ -12,6 +22,11 @@ const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 10, 21, 12);
 const packFiles = import.meta.glob<unknown>('../../../../public/content/vocabulary/en/demo-everyday.json', { eager: true, import: 'default' });
 const pack: VocabularyPack = vocabularyPackSchema.parse(Object.values(packFiles)[0]);
+
+/** The evidence of the (only) sense of an entry for one facet. Spelling and definition rounds train `recall`. */
+function facetOf(entry: VocabularyEntry | undefined, facet: VocabularyFacet = 'recall') {
+  return entry?.senses.find((sense) => sense.source.kind === 'library')?.knowledge?.[facet];
+}
 
 async function answerAll(repository: VocabularyRepository, setId: string, questions: readonly LocalVocabularyQuestion[], answer: (question: LocalVocabularyQuestion, index: number) => { text: string; hints?: TrainerHint[] }) {
   for (const [index, question] of questions.entries()) {
@@ -46,7 +61,7 @@ describe('Vocabulary Trainer persistence', () => {
     expect(again?.answers[0]).toMatchObject({ text: 'wrong' });
   });
 
-  it('on checking, adds answered words to the collection and moves them on the existing review ladder', async () => {
+  it('on checking, adds answered words to the collection and moves only the trained facet on the review ladder', async () => {
     const repository = memoryVocabularyRepository();
     const set = (await startRound(repository, { pack, filters: NO_PACK_FILTERS, mode: 'spelling', count: 4, collection: [], now: NOW, seed: 's3' }))!;
     const questions = localQuestions(set);
@@ -63,13 +78,19 @@ describe('Vocabulary Trainer persistence', () => {
     const byLemma = new Map(entries.map((entry) => [entry.lemma, entry]));
     const [q1, q2, q3, q4] = questions;
     // Correct without hints: one step up, due tomorrow.
-    expect(byLemma.get(q1!.lemma)?.review).toMatchObject({ step: 1, dueAt: NOW + DAY, status: 'learning' });
-    expect(byLemma.get(q1!.lemma)?.review.history.at(-1)).toEqual({ at: NOW, rating: 'good', via: 'trainer' });
-    // With hints, or a near miss: no change; still new and due.
-    expect(byLemma.get(q2!.lemma)?.review).toMatchObject({ step: 0, status: 'new', dueAt: NOW, history: [] });
-    expect(byLemma.get(q3!.lemma)?.review).toMatchObject({ step: 0, status: 'new', history: [] });
+    expect(facetOf(byLemma.get(q1!.lemma))).toMatchObject({ step: 1, dueAt: NOW + DAY });
+    expect(facetOf(byLemma.get(q1!.lemma))?.attempts).toEqual([{ at: NOW, outcome: 'correct', hints: 0, expected: q1!.answer, roundId: set.id }]);
+    // With hints, or a near miss: no step; still at the start and due.
+    expect(facetOf(byLemma.get(q2!.lemma))).toMatchObject({ step: 0, dueAt: NOW, attempts: [{ outcome: 'correct', hints: 2 }] });
+    expect(facetOf(byLemma.get(q3!.lemma))).toMatchObject({ step: 0, dueAt: NOW, attempts: [{ outcome: 'almost' }] });
     // Wrong: back to the start, due tomorrow.
-    expect(byLemma.get(q4!.lemma)?.review.history.at(-1)).toEqual({ at: NOW, rating: 'again', via: 'trainer' });
+    expect(facetOf(byLemma.get(q4!.lemma))).toMatchObject({ step: 0, dueAt: NOW + DAY, attempts: [{ outcome: 'incorrect' }] });
+    // Only the trained direction has evidence; the self-rated review schedule is not touched by the trainer.
+    for (const entry of entries) {
+      expect(facetOf(entry, 'recognition')).toBeUndefined();
+      expect(facetOf(entry, 'context')).toBeUndefined();
+      expect(entry.review).toEqual(initialReviewState(NOW));
+    }
     expect(entries.every((entry) => entry.senses.every((sense) => sense.source.kind === 'library' && sense.source.packId === pack.id))).toBe(true);
   });
 
@@ -93,7 +114,9 @@ describe('Vocabulary Trainer persistence', () => {
     await answerAll(repository, second.id, localQuestions(second), (question) => ({ text: question.answer }));
     await finishRound(repository, second.id, pack, NOW + 1000);
     const [entry] = await repository.entries.list();
-    expect(entry?.review).toMatchObject({ step: 1, dueAt: NOW + DAY });
+    expect(facetOf(entry)).toMatchObject({ step: 1, dueAt: NOW + DAY });
+    // Both answers are recorded as evidence; only the first (while due) moved the schedule.
+    expect(facetOf(entry)?.attempts.map((attempt) => attempt.outcome)).toEqual(['correct', 'correct']);
   });
 
   it('adds a library sense to a word already saved from Reading, keeping one entry', async () => {
@@ -136,8 +159,11 @@ describe('Vocabulary Trainer persistence', () => {
     const entries = await repository.entries.list();
     expect(entries).toHaveLength(1);
     expect(entries[0]?.senses.map((sense) => sense.source.kind)).toEqual(['manual', 'library']);
-    // Not due yet, so a correct answer does not move it.
+    // The trainer leaves the self-rated review schedule alone.
     expect(entries[0]?.review.step).toBe(2);
+    // Evidence belongs to the sense trained (the library one), never to the other meaning.
+    expect(facetOf(entries[0])).toMatchObject({ step: 1, attempts: [{ outcome: 'correct' }] });
+    expect(entries[0]?.senses[0]?.knowledge).toBeUndefined();
   });
 
   it('builds a retry round from the questions that went wrong or needed hints', async () => {
@@ -195,8 +221,11 @@ describe('hints taken before leaving a round', () => {
     expect(outcome.rescheduled).toBe(0);
     const [entry] = await repository.entries.list();
     // Still step 1 and due: a hinted answer is weak evidence.
-    expect(entry?.review).toMatchObject({ step: 1, dueAt: NOW + DAY });
-    expect(entry?.review.history).toEqual([{ at: NOW, rating: 'good', via: 'trainer' }]);
+    expect(facetOf(entry)).toMatchObject({ step: 1, dueAt: NOW + DAY });
+    expect(facetOf(entry)?.attempts.map((attempt) => [attempt.outcome, attempt.hints])).toEqual([
+      ['correct', 0],
+      ['correct', 2],
+    ]);
   });
 
   it('promotes the same due word when it really was answered without hints (control)', async () => {
@@ -207,7 +236,7 @@ describe('hints taken before leaving a round', () => {
     await saveAnswer(repository, round.id, { kind: 'typed', questionId: question.id, text: question.answer, hints: restored, answeredAt: later }, later);
     await finishRound(repository, round.id, pack, later);
     const [entry] = await repository.entries.list();
-    expect(entry?.review.step).toBe(2);
+    expect(facetOf(entry)?.step).toBe(2);
   });
 
   it('does not carry hints into a different round', async () => {
@@ -254,7 +283,8 @@ describe('checking a round atomically', () => {
     expect(retried).toMatchObject({ added: 3, rescheduled: 3 });
     const entries = await repository.entries.list();
     expect(entries).toHaveLength(3);
-    expect(entries.map((entry) => entry.review.history)).toEqual(entries.map(() => [{ at: NOW + 1000, rating: 'again', via: 'trainer' }]));
+    expect(entries.map((entry) => facetOf(entry)?.attempts.map((attempt) => [attempt.at, attempt.outcome]))).toEqual(entries.map(() => [[NOW + 1000, 'incorrect']]));
+    expect(entries.every((entry) => facetOf(entry)?.dueAt === NOW + 1000 + DAY)).toBe(true);
   });
 
   it('applies ratings once when the same round is completed twice at the same time (two tabs)', async () => {
@@ -267,7 +297,7 @@ describe('checking a round atomically', () => {
     expect(results.reduce((sum, result) => sum + (result?.rescheduled ?? 0), 0)).toBe(3);
     const entries = await tabA.entries.list();
     expect(entries).toHaveLength(3);
-    expect(entries.every((entry) => entry.review.history.length === 1)).toBe(true);
+    expect(entries.every((entry) => facetOf(entry)?.attempts.length === 1)).toBe(true);
   });
 
   it('refuses to commit over a round that is already checked', async () => {

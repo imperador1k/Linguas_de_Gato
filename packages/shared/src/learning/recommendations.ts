@@ -1,4 +1,5 @@
 import type { RecommendationState, TrainingSession } from '../contracts/learning.js';
+import { dueFacets, entriesDueForPractice } from '../domain/vocabulary-knowledge.js';
 import { dueEntries } from '../domain/vocabulary.js';
 import type { CategoryInsight } from './insights.js';
 import { isNegative, type LearningObservation, type LearningSnapshot } from './observations.js';
@@ -89,7 +90,7 @@ function actionFor(category: LearningCategory, observations: readonly LearningOb
   }
 }
 
-export function recommendationId(category: LearningCategory | 'vocabulary-due'): string {
+export function recommendationId(category: LearningCategory | 'vocabulary-due' | 'vocabulary-practice-due'): string {
   return `rec:${category}`;
 }
 
@@ -144,6 +145,26 @@ export function computeRecommendations(
       preliminary: false,
       // Something newly due after the learner acted brings the review back.
       evidenceAt: newestDue,
+      observationIds: [],
+      returned: false,
+    });
+  }
+
+  // Words due in the trainer: per sense and direction, from tested evidence (V1).
+  const practiceDue = entriesDueForPractice(snapshot.vocabularyEntries, now);
+  if (practiceDue.length > 0) {
+    const facets = dueFacets(snapshot.vocabularyEntries, now);
+    const oldestDue = facets[0]?.dueAt ?? now;
+    candidates.push({
+      id: recommendationId('vocabulary-practice-due'),
+      category: null,
+      title: `Practise ${practiceDue.length} due word${practiceDue.length === 1 ? '' : 's'}`,
+      rationale: `${practiceDue.length} word${practiceDue.length === 1 ? ' is' : 's are'} due in the trainer${now - oldestDue > DAY ? `, the oldest for ${Math.floor((now - oldestDue) / DAY)} days` : ''}.`,
+      nextStep: 'Answer each one without hints: only unaided answers move a word up its schedule.',
+      action: { type: 'open', path: '/vocabulary?train=due', label: 'Practise now' },
+      priority: Math.round(Math.min(3, 1 + practiceDue.length / 10) * 1000) / 1000,
+      preliminary: false,
+      evidenceAt: facets.at(-1)?.dueAt ?? now,
       observationIds: [],
       returned: false,
     });

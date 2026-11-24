@@ -71,8 +71,15 @@ export function isDue(entry: Pick<VocabularyEntry, 'review'>, now: number): bool
   return entry.review.dueAt <= now;
 }
 
+/**
+ * The self-rated meaning review queue: expressions the learner saved
+ * (Reading, manual) whose per-expression schedule is due. Since V1 that
+ * schedule belongs to this review only; trainer answers are evidence per
+ * sense and facet (`vocabulary-knowledge.ts`), so words that only a trainer
+ * round added are reviewed by the trainer, not here.
+ */
 export function dueEntries(entries: readonly VocabularyEntry[], now: number): VocabularyEntry[] {
-  return entries.filter((entry) => isDue(entry, now)).sort((a, b) => a.review.dueAt - b.review.dueAt);
+  return entries.filter((entry) => isDue(entry, now) && entry.senses.some((sense) => sense.source.kind !== 'library')).sort((a, b) => a.review.dueAt - b.review.dueAt);
 }
 
 // --- Saving lookups --------------------------------------------------------------------------
@@ -287,10 +294,12 @@ export function evaluateVocabularyAnswer(question: VocabularyQuestion, answer: V
     // Local trainer questions: only listed answers count; near misses and wrong forms are incorrect for scoring.
     case 'spelling':
     case 'context':
-    case 'definition': {
+    case 'definition':
+    case 'recognition': {
       if (answer.kind !== 'typed') return 'unanswered';
       // A submitted empty answer is a deliberate "I don't know": answered, and not correct.
-      const verdict = matchVocabularyAnswer(answer.text, { answer: question.answer, accepted: question.accepted, forms: question.forms }, question.language).verdict;
+      // English → Portuguese answers are matched with Portuguese rules.
+      const verdict = matchVocabularyAnswer(answer.text, { answer: question.answer, accepted: question.accepted, forms: question.forms }, question.type === 'recognition' ? 'pt' : question.language).verdict;
       return verdict === 'correct' ? 'correct' : 'incorrect';
     }
   }
