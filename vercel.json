@@ -8,6 +8,7 @@
     "server": {
       "root": "apps/server",
       "framework": "fastify",
+      "entrypoint": "src/index.ts",
       "buildCommand": "npm --prefix ../.. run build --workspace @ldg/shared && npm run build"
     }
   },
