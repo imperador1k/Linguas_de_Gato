@@ -4,14 +4,14 @@
     "client": {
       "root": "apps/client",
       "framework": "vite",
-      "installCommand": "npm --prefix ../.. install --include=dev"
+      "installCommand": "cd ../.. && npm install --include=dev"
     },
     "server": {
       "root": "apps/server",
       "framework": "fastify",
       "entrypoint": "src/index.ts",
-      "installCommand": "npm --prefix ../.. install --include=dev",
-      "buildCommand": "npm --prefix ../.. run build --workspace @ldg/shared && npm run build"
+      "installCommand": "cd ../.. && npm install --include=dev",
+      "buildCommand": "cd ../.. && npm run build --workspace @ldg/shared && npm run build --workspace @ldg/server"
     }
   },
   "rewrites": [
