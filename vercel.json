@@ -9,7 +9,7 @@
     "server": {
       "root": "apps/server",
       "framework": "fastify",
-      "entrypoint": "src/index.ts",
+      "entrypoint": "dist/index.js",
       "installCommand": "cd ../.. && npm install --include=dev",
       "buildCommand": "cd ../.. && npm run build --workspace @ldg/shared && npm run build --workspace @ldg/server"
     }
